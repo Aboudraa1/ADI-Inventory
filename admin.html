@@ -1,1 +1,223 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ADI Inventory | Admin</title><link rel="stylesheet" href="css/style.css"></head><body><header><h1>ADI Inventory · Admin</h1><nav class="actions"><a href="home.html">Categories</a><button class="secondary" id="logout">Log out</button></nav></header><main><p id="message" class="message" role="status"></p><div class="two"><section class="card"><h2>Categories</h2><div id="categoryList"></div><form id="categoryForm"><label for="categoryName">New category</label><input id="categoryName" required placeholder="Nuts"><p><button>Add category</button></p></form></section><section class="card"><h2>Add / update item</h2><form id="itemForm"><label>Item number</label><input id="itemNo" required><label>Description</label><input id="description" required><label>Barcode</label><input id="barcode"><label>Category</label><select id="categorySelect" required></select><p><button>Save item</button></p></form></section></div><section class="card"><h2>Min / Max stock rules</h2><p class="muted">When a closed count is below minimum, suggest enough units to reach maximum. Quantities use the same unit as the count.</p><form id="ruleForm"><label>Item</label><select id="itemSelect" required></select><div class="two"><div><label>Minimum</label><input id="minQty" type="number" min="0" step="0.001" value="0" required></div><div><label>Maximum</label><input id="maxQty" type="number" min="0" step="0.001" value="0" required></div></div><label><input id="ruleEnabled" type="checkbox" style="width:auto"> Enable automatic suggestion</label><p><button>Save rule</button></p></form><div class="tablewrap"><table><thead><tr><th>Item No.</th><th>Description</th><th>Rule</th><th>Min</th><th>Max</th></tr></thead><tbody id="rules"></tbody></table></div></section><section class="card"><h2>Counting sessions</h2><p class="muted">Admin closes a session to generate its reorder suggestions.</p><div class="tablewrap"><table><thead><tr><th>Category</th><th>Created</th><th>Status</th><th>Action</th></tr></thead><tbody id="sessions"></tbody></table></div></section><section class="card"><div class="actions"><h2>Reorder draft</h2><button id="exportOrders" class="secondary">Export approved CSV</button></div><p class="muted">Admin may change quantities and approve. No purchase orders are sent automatically.</p><div class="tablewrap"><table><thead><tr><th>Item No.</th><th>Description</th><th>Counted</th><th>Suggested</th><th>Order Qty</th><th>Status</th><th>Action</th></tr></thead><tbody id="orders"></tbody></table></div></section></main><script type="module" src="js/admin.js"></script></body></html>
+
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>ADI Inventory | Admin</title>
+
+    <link rel="stylesheet" href="./CSS/style.css">
+</head>
+
+<body>
+
+    <header>
+        <h1>ADI Inventory · Admin</h1>
+
+        <nav class="actions">
+            <a href="./home.html">Categories</a>
+            <button class="secondary" id="logout" type="button">
+                Log out
+            </button>
+        </nav>
+    </header>
+
+    <main>
+
+        <p id="message" class="message" role="status"></p>
+
+        <div class="two">
+
+            <!-- Categories -->
+            <section class="card">
+                <h2>Categories</h2>
+
+                <div id="categoryList"></div>
+
+                <form id="categoryForm">
+                    <label for="categoryName">New category</label>
+                    <input
+                        id="categoryName"
+                        required
+                        placeholder="Nuts">
+
+                    <p>
+                        <button type="submit">Add category</button>
+                    </p>
+                </form>
+            </section>
+
+            <!-- Items -->
+            <section class="card">
+                <h2>Add / Update Item</h2>
+
+                <form id="itemForm">
+
+                    <label for="itemNo">Item Number</label>
+                    <input id="itemNo" required>
+
+                    <label for="description">Description</label>
+                    <input id="description" required>
+
+                    <label for="barcode">Barcode</label>
+                    <input id="barcode">
+
+                    <label for="categorySelect">Category</label>
+                    <select id="categorySelect" required></select>
+
+                    <p>
+                        <button type="submit">Save Item</button>
+                    </p>
+                </form>
+            </section>
+
+        </div>
+
+        <!-- Min / Max -->
+        <section class="card">
+
+            <h2>Min / Max Stock Rules</h2>
+
+            <p class="muted">
+                When a closed count is below minimum,
+                suggest enough units to reach maximum.
+                Quantities use the same unit as the count.
+            </p>
+
+            <form id="ruleForm">
+
+                <label for="itemSelect">Item</label>
+                <select id="itemSelect" required></select>
+
+                <div class="two">
+
+                    <div>
+                        <label for="minQty">Minimum</label>
+                        <input
+                            id="minQty"
+                            type="number"
+                            min="0"
+                            step="0.001"
+                            value="0"
+                            required>
+                    </div>
+
+                    <div>
+                        <label for="maxQty">Maximum</label>
+                        <input
+                            id="maxQty"
+                            type="number"
+                            min="0"
+                            step="0.001"
+                            value="0"
+                            required>
+                    </div>
+
+                </div>
+
+                <label>
+                    <input
+                        id="ruleEnabled"
+                        type="checkbox"
+                        style="width:auto">
+                    Enable automatic suggestion
+                </label>
+
+                <p>
+                    <button type="submit">Save Rule</button>
+                </p>
+
+            </form>
+
+            <div class="tablewrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Item No.</th>
+                            <th>Description</th>
+                            <th>Rule</th>
+                            <th>Min</th>
+                            <th>Max</th>
+                        </tr>
+                    </thead>
+
+                    <tbody id="rules"></tbody>
+                </table>
+            </div>
+
+        </section>
+
+        <!-- Counting Sessions -->
+        <section class="card">
+
+            <h2>Counting Sessions</h2>
+
+            <p class="muted">
+                Admin closes a session to generate
+                its reorder suggestions.
+            </p>
+
+            <div class="tablewrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Category</th>
+                            <th>Created</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+
+                    <tbody id="sessions"></tbody>
+                </table>
+            </div>
+
+        </section>
+
+        <!-- Reorder Draft -->
+        <section class="card">
+
+            <div class="actions">
+                <h2>Reorder Draft</h2>
+
+                <button
+                    id="exportOrders"
+                    class="secondary"
+                    type="button">
+                    Export Approved CSV
+                </button>
+            </div>
+
+            <p class="muted">
+                Admin may change quantities and approve.
+                No purchase orders are sent automatically.
+            </p>
+
+            <div class="tablewrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Item No.</th>
+                            <th>Description</th>
+                            <th>Counted</th>
+                            <th>Suggested</th>
+                            <th>Order Qty</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+
+                    <tbody id="orders"></tbody>
+                </table>
+            </div>
+
+        </section>
+
+    </main>
+
+    <script type="module" src="./JS/admin.js"></script>
+
+</body>
+</html>
