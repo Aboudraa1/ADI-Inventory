@@ -1,1 +1,163 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ADI Inventory | Count</title><link rel="stylesheet" href="css/style.css"><script defer src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script></head><body><header><h1 id="heading">Inventory</h1><nav class="actions"><a href="home.html">← Categories</a><button class="secondary" id="logout">Log out</button></nav></header><main><p class="muted">Session: <span id="sessionId">...</span> · System quantities are hidden.</p><div class="two"><section class="card"><h2>Find an item</h2><button id="scan">Scan barcode</button><button class="secondary" id="stopScan">Stop camera</button><div id="scanner" hidden></div><label for="search">Search by name, item number or barcode</label><input id="search" placeholder="Start typing..."><div id="results" class="results"></div></section><section class="card"><h2>Count item</h2><div id="selected" hidden><p id="itemNo" class="muted"></p><h3 id="itemName"></h3><label for="qty">Counted quantity</label><input id="qty" type="number" min="0" step="0.001" inputmode="decimal"><p><button id="save">Save count</button></p></div><p class="muted">Select or scan an item first. Saved counts cannot be edited by staff.</p><p id="message" class="message" role="status"></p></section></div><section class="card"><h2>My saved counts (<span id="total">0</span>)</h2><p class="muted">Read-only review of this counting session.</p><div class="tablewrap"><table><thead><tr><th>Item No.</th><th>Description</th><th>Counted Qty</th></tr></thead><tbody id="countList"></tbody></table></div></section></main><script type="module" src="js/inventory.js"></script></body></html>
+
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>ADI Inventory | Count</title>
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="./CSS/style.css">
+
+    <!-- Barcode Scanner -->
+    <script defer src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+</head>
+
+<body>
+
+    <!-- Header -->
+    <header>
+        <h1 id="heading">Inventory</h1>
+
+        <nav class="actions">
+            <a href="./home.html">← Categories</a>
+
+            <button class="secondary" id="logout">
+                Log out
+            </button>
+        </nav>
+    </header>
+
+    <main>
+
+        <!-- Session Information -->
+        <p class="muted">
+            Session:
+            <span id="sessionId">...</span>
+            · System quantities are hidden.
+        </p>
+
+        <div class="two">
+
+            <!-- Item Search -->
+            <section class="card">
+
+                <h2>Find an item</h2>
+
+                <div class="actions">
+                    <button id="scan" type="button">
+                        Scan barcode
+                    </button>
+
+                    <button
+                        class="secondary"
+                        id="stopScan"
+                        type="button">
+                        Stop camera
+                    </button>
+                </div>
+
+                <div id="scanner" hidden></div>
+
+                <label for="search">
+                    Search by name, item number or barcode
+                </label>
+
+                <input
+                    id="search"
+                    type="search"
+                    placeholder="Start typing..."
+                    autocomplete="off">
+
+                <div id="results" class="results"></div>
+
+            </section>
+
+            <!-- Count Item -->
+            <section class="card">
+
+                <h2>Count item</h2>
+
+                <div id="selected" hidden>
+
+                    <p id="itemNo" class="muted"></p>
+
+                    <h3 id="itemName"></h3>
+
+                    <label for="qty">
+                        Counted quantity
+                    </label>
+
+                    <input
+                        id="qty"
+                        type="number"
+                        min="0"
+                        step="0.001"
+                        inputmode="decimal">
+
+                    <p>
+                        <button id="save" type="button">
+                            Save count
+                        </button>
+                    </p>
+
+                </div>
+
+                <p class="muted">
+                    Select or scan an item first.
+                    Saved counts cannot be edited by staff.
+                </p>
+
+                <p
+                    id="message"
+                    class="message"
+                    role="status">
+                </p>
+
+            </section>
+
+        </div>
+
+        <!-- Saved Counts -->
+        <section class="card">
+
+            <h2>
+                My saved counts
+                (<span id="total">0</span>)
+            </h2>
+
+            <p class="muted">
+                Read-only review of this counting session.
+            </p>
+
+            <div class="tablewrap">
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Item No.</th>
+                            <th>Description</th>
+                            <th>Counted Qty</th>
+                        </tr>
+                    </thead>
+
+                    <tbody id="countList"></tbody>
+
+                </table>
+
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- Inventory JavaScript -->
+    <script
+        type="module"
+        src="./JS/inventory.js">
+    </script>
+
+</body>
+</html>
