@@ -1,11 +1,13 @@
 
 <!doctype html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1">
 
-    <title>ADI Inventory | Categories</title>
+    <title>ADI Inventory | Home</title>
 
     <link rel="stylesheet" href="./CSS/style.css">
 </head>
@@ -16,32 +18,81 @@
         <h1>ADI Inventory</h1>
 
         <nav class="actions">
-            <a id="adminLink" href="./admin.html" hidden>Admin</a>
+            <a id="adminLink"
+               href="./admin.html"
+               hidden>
+                Admin
+            </a>
 
-            <button class="secondary" id="logout">
+            <button class="secondary"
+                    id="logout"
+                    type="button">
                 Log out
             </button>
         </nav>
     </header>
 
     <main>
-        <h2>Inventory Categories</h2>
+
+        <h2>Inventory Dashboard</h2>
 
         <p class="muted">
-            Welcome, <span id="welcome"></span>.
-            Choose a category to start counting.
+            Welcome,
+            <strong id="welcome"></strong>
         </p>
 
-        <section id="categories" class="grid"></section>
+        <!-- Branch Selection -->
+        <section class="card">
 
-        <p id="message" class="message" role="status"></p>
+            <h2>Select Branch</h2>
+
+            <p class="muted">
+                Please select your branch
+                before starting inventory counting.
+            </p>
+
+            <label for="branchSelect">
+                Branch
+            </label>
+
+            <select id="branchSelect" required>
+                <option value="">
+                    Loading branches...
+                </option>
+            </select>
+
+        </section>
+
+        <!-- Categories -->
+        <section class="card">
+
+            <h2>Inventory Categories</h2>
+
+            <p class="muted">
+                Select a branch first,
+                then choose a category.
+            </p>
+
+            <section id="categories"
+                     class="grid">
+            </section>
+
+        </section>
+
+        <p id="message"
+           class="message"
+           role="status">
+        </p>
+
     </main>
 
     <footer>
         ADI Inventory
     </footer>
 
-    <script type="module" src="./JS/home.js"></script>
+    <script type="module"
+            src="./JS/home.js">
+    </script>
 
 </body>
 </html>
