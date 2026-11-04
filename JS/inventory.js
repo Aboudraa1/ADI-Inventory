@@ -221,7 +221,7 @@ el('save').addEventListener('click', async () => {
 });
 
 // Load saved counts
-async function loadCounts() {
+ async function loadCounts() {      if (!session) return;      const { data, error } = await db         .from('count_entries')         .select(             'id,item_id,qty,created_at,items(item_no,description)'         )         .eq('session_id', session.id)         .order('created_at', { ascending: false })         .order('id', { ascending: false });      if (error) throw error;      // Keep only the latest count for each item     const latestCounts = new Map();      for (const entry of (data || [])) {         if (!latestCounts.has(entry.item_id)) {             latestCounts.set(entry.item_id, entry);         }     }      const counts = Array.from(latestCounts.values());      el('countList').innerHTML = counts.map(entry => `         <tr>             <td>${escapeHtml(entry.items?.item_no)}</td>             <td>${escapeHtml(entry.items?.description)}</td>             <td>${escapeHtml(entry.qty)}</td>         </tr>     `).join('') ||         '<tr><td colspan="3">No items counted yet</td></tr>';      el('total').textContent = counts.length; } {
 
     if (!session) return;
 
