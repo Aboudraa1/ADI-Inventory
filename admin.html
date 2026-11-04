@@ -1,73 +1,414 @@
 
-<!-- Inventory Count Results -->
-<section class="card">
+<!doctype html>
+<html lang="en">
 
-    <div class="actions">
-        <h2>Inventory Count Results</h2>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
 
-        <button
-            id="refreshCounts"
-            class="secondary"
-            type="button">
-            Refresh Results
-        </button>
-    </div>
+    <title>ADI Inventory | Admin</title>
 
-    <p class="muted">
-        View the latest counted quantity for each item.
-        Previous readings remain saved in Supabase.
-    </p>
+    <!-- Main CSS -->
+    <link rel="stylesheet" href="./CSS/style.css">
+</head>
 
-    <div class="two">
+<body>
 
-        <div>
-            <label for="resultsBranch">
-                Select Branch
-            </label>
+    <!-- Header -->
+    <header>
+        <h1>ADI Inventory · Admin</h1>
 
-            <select id="resultsBranch">
-                <option value="">All Branches</option>
-            </select>
+        <nav class="actions">
+            <a href="./home.html">Categories</a>
+
+            <button
+                class="secondary"
+                id="logout"
+                type="button">
+                Log out
+            </button>
+        </nav>
+    </header>
+
+    <main>
+
+        <!-- General Messages -->
+        <p
+            id="message"
+            class="message"
+            role="status">
+        </p>
+
+        <!-- Categories and Items -->
+        <div class="two">
+
+            <!-- Categories -->
+            <section class="card">
+
+                <h2>Categories</h2>
+
+                <div id="categoryList"></div>
+
+                <form id="categoryForm">
+
+                    <label for="categoryName">
+                        New Category
+                    </label>
+
+                    <input
+                        id="categoryName"
+                        type="text"
+                        placeholder="Nuts"
+                        required>
+
+                    <p>
+                        <button type="submit">
+                            Add Category
+                        </button>
+                    </p>
+
+                </form>
+            </section>
+
+            <!-- Add / Update Items -->
+            <section class="card">
+
+                <h2>Add / Update Item</h2>
+
+                <form id="itemForm">
+
+                    <label for="itemNo">
+                        Item Number
+                    </label>
+
+                    <input
+                        id="itemNo"
+                        type="text"
+                        required>
+
+                    <label for="description">
+                        Description
+                    </label>
+
+                    <input
+                        id="description"
+                        type="text"
+                        required>
+
+                    <label for="barcode">
+                        Barcode
+                    </label>
+
+                    <input
+                        id="barcode"
+                        type="text">
+
+                    <label for="categorySelect">
+                        Category
+                    </label>
+
+                    <select
+                        id="categorySelect"
+                        required>
+                    </select>
+
+                    <p>
+                        <button type="submit">
+                            Save Item
+                        </button>
+                    </p>
+
+                </form>
+            </section>
+
         </div>
 
-        <div>
-            <label for="resultsCategory">
-                Select Category
-            </label>
+        <!-- Min / Max Stock Rules -->
+        <section class="card">
 
-            <select id="resultsCategory">
-                <option value="">All Categories</option>
-            </select>
-        </div>
+            <h2>Min / Max Stock Rules</h2>
 
-    </div>
+            <p class="muted">
+                Set minimum and maximum stock quantities
+                for each item in each branch.
+            </p>
 
-    <p id="countResultsMessage"
-       class="message"
-       role="status"></p>
+            <form id="ruleForm">
 
-    <div class="tablewrap">
+                <!-- Branch Selection -->
+                <label for="ruleBranch">
+                    Select Branch
+                </label>
 
-        <table>
-            <thead>
-                <tr>
-                    <th>Branch</th>
-                    <th>Item No.</th>
-                    <th>Description</th>
-                    <th>Counted Qty</th>
-                    <th>Count Date</th>
-                </tr>
-            </thead>
+                <select
+                    id="ruleBranch"
+                    required>
+                    <option value="">
+                        Select Branch
+                    </option>
+                </select>
 
-            <tbody id="countResults">
-                <tr>
-                    <td colspan="5">
-                        Loading inventory results...
-                    </td>
-                </tr>
-            </tbody>
-        </table>
+                <!-- Item Selection -->
+                <label for="itemSelect">
+                    Select Item
+                </label>
 
-    </div>
+                <select
+                    id="itemSelect"
+                    required>
+                </select>
 
-</section>
+                <div class="two">
+
+                    <div>
+                        <label for="minQty">
+                            Minimum Quantity
+                        </label>
+
+                        <input
+                            id="minQty"
+                            type="number"
+                            min="0"
+                            step="0.001"
+                            value="0"
+                            required>
+                    </div>
+
+                    <div>
+                        <label for="maxQty">
+                            Maximum Quantity
+                        </label>
+
+                        <input
+                            id="maxQty"
+                            type="number"
+                            min="0"
+                            step="0.001"
+                            value="0"
+                            required>
+                    </div>
+
+                </div>
+
+                <label>
+                    <input
+                        id="ruleEnabled"
+                        type="checkbox"
+                        style="width:auto">
+
+                    Enable Automatic Suggestion
+                </label>
+
+                <p>
+                    <button type="submit">
+                        Save Rule
+                    </button>
+                </p>
+
+            </form>
+
+            <h3>Saved Stock Rules</h3>
+
+            <div class="tablewrap">
+                <table>
+
+                    <thead>
+                        <tr>
+                            <th>Item No.</th>
+                            <th>Description</th>
+                            <th>Rule</th>
+                            <th>Min</th>
+                            <th>Max</th>
+                        </tr>
+                    </thead>
+
+                    <tbody id="rules"></tbody>
+
+                </table>
+            </div>
+
+        </section>
+
+        <!-- Inventory Count Results -->
+        <section class="card">
+
+            <div class="actions">
+
+                <h2>Inventory Count Results</h2>
+
+                <button
+                    id="refreshCounts"
+                    class="secondary"
+                    type="button">
+                    Refresh Results
+                </button>
+
+            </div>
+
+            <p class="muted">
+                View the latest counted quantity
+                for each item in each branch.
+                Previous readings remain saved in Supabase.
+            </p>
+
+            <div class="two">
+
+                <!-- Branch Filter -->
+                <div>
+
+                    <label for="resultsBranch">
+                        Select Branch
+                    </label>
+
+                    <select id="resultsBranch">
+                        <option value="">
+                            All Branches
+                        </option>
+                    </select>
+
+                </div>
+
+                <!-- Category Filter -->
+                <div>
+
+                    <label for="resultsCategory">
+                        Select Category
+                    </label>
+
+                    <select id="resultsCategory">
+                        <option value="">
+                            All Categories
+                        </option>
+                    </select>
+
+                </div>
+
+            </div>
+
+            <p
+                id="countResultsMessage"
+                class="message"
+                role="status">
+            </p>
+
+            <div class="tablewrap">
+
+                <table>
+
+                    <thead>
+                        <tr>
+                            <th>Branch</th>
+                            <th>Item No.</th>
+                            <th>Description</th>
+                            <th>Counted Qty</th>
+                            <th>Count Date</th>
+                        </tr>
+                    </thead>
+
+                    <tbody id="countResults">
+                        <tr>
+                            <td colspan="5">
+                                Loading inventory results...
+                            </td>
+                        </tr>
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        </section>
+
+        <!-- Counting Sessions -->
+        <section class="card">
+
+            <h2>Counting Sessions</h2>
+
+            <p class="muted">
+                Admin closes a session to generate
+                reorder suggestions.
+            </p>
+
+            <div class="tablewrap">
+
+                <table>
+
+                    <thead>
+                        <tr>
+                            <th>Branch / Category</th>
+                            <th>Created</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+
+                    <tbody id="sessions"></tbody>
+
+                </table>
+
+            </div>
+
+        </section>
+
+        <!-- Reorder Draft -->
+        <section class="card">
+
+            <div class="actions">
+
+                <h2>Reorder Draft</h2>
+
+                <button
+                    id="exportOrders"
+                    class="secondary"
+                    type="button">
+                    Export Approved CSV
+                </button>
+
+            </div>
+
+            <p class="muted">
+                Admin can review suggested quantities,
+                change order quantities, and approve
+                or cancel draft orders.
+
+                No purchase orders are sent automatically.
+            </p>
+
+            <div class="tablewrap">
+
+                <table>
+
+                    <thead>
+                        <tr>
+                            <th>Item No.</th>
+                            <th>Description</th>
+                            <th>Counted</th>
+                            <th>Suggested</th>
+                            <th>Order Qty</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+
+                    <tbody id="orders"></tbody>
+
+                </table>
+
+            </div>
+
+        </section>
+
+    </main>
+
+    <footer>
+        ADI Inventory Management System
+    </footer>
+
+    <!-- Admin JavaScript -->
+    <script
+        type="module"
+        src="./JS/admin.js">
+    </script>
+
+</body>
+</html>
