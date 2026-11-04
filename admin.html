@@ -1,223 +1,73 @@
 
-<!doctype html>
-<html lang="en">
+<!-- Inventory Count Results -->
+<section class="card">
 
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <div class="actions">
+        <h2>Inventory Count Results</h2>
 
-    <title>ADI Inventory | Admin</title>
+        <button
+            id="refreshCounts"
+            class="secondary"
+            type="button">
+            Refresh Results
+        </button>
+    </div>
 
-    <link rel="stylesheet" href="./CSS/style.css">
-</head>
+    <p class="muted">
+        View the latest counted quantity for each item.
+        Previous readings remain saved in Supabase.
+    </p>
 
-<body>
+    <div class="two">
 
-    <header>
-        <h1>ADI Inventory · Admin</h1>
+        <div>
+            <label for="resultsBranch">
+                Select Branch
+            </label>
 
-        <nav class="actions">
-            <a href="./home.html">Categories</a>
-            <button class="secondary" id="logout" type="button">
-                Log out
-            </button>
-        </nav>
-    </header>
-
-    <main>
-
-        <p id="message" class="message" role="status"></p>
-
-        <div class="two">
-
-            <!-- Categories -->
-            <section class="card">
-                <h2>Categories</h2>
-
-                <div id="categoryList"></div>
-
-                <form id="categoryForm">
-                    <label for="categoryName">New category</label>
-                    <input
-                        id="categoryName"
-                        required
-                        placeholder="Nuts">
-
-                    <p>
-                        <button type="submit">Add category</button>
-                    </p>
-                </form>
-            </section>
-
-            <!-- Items -->
-            <section class="card">
-                <h2>Add / Update Item</h2>
-
-                <form id="itemForm">
-
-                    <label for="itemNo">Item Number</label>
-                    <input id="itemNo" required>
-
-                    <label for="description">Description</label>
-                    <input id="description" required>
-
-                    <label for="barcode">Barcode</label>
-                    <input id="barcode">
-
-                    <label for="categorySelect">Category</label>
-                    <select id="categorySelect" required></select>
-
-                    <p>
-                        <button type="submit">Save Item</button>
-                    </p>
-                </form>
-            </section>
-
+            <select id="resultsBranch">
+                <option value="">All Branches</option>
+            </select>
         </div>
 
-        <!-- Min / Max -->
-        <section class="card">
+        <div>
+            <label for="resultsCategory">
+                Select Category
+            </label>
 
-            <h2>Min / Max Stock Rules</h2>
+            <select id="resultsCategory">
+                <option value="">All Categories</option>
+            </select>
+        </div>
 
-            <p class="muted">
-                When a closed count is below minimum,
-                suggest enough units to reach maximum.
-                Quantities use the same unit as the count.
-            </p>
+    </div>
 
-            <form id="ruleForm">
+    <p id="countResultsMessage"
+       class="message"
+       role="status"></p>
 
-                <label for="itemSelect">Item</label>
-                <select id="itemSelect" required></select>
+    <div class="tablewrap">
 
-                <div class="two">
+        <table>
+            <thead>
+                <tr>
+                    <th>Branch</th>
+                    <th>Item No.</th>
+                    <th>Description</th>
+                    <th>Counted Qty</th>
+                    <th>Count Date</th>
+                </tr>
+            </thead>
 
-                    <div>
-                        <label for="minQty">Minimum</label>
-                        <input
-                            id="minQty"
-                            type="number"
-                            min="0"
-                            step="0.001"
-                            value="0"
-                            required>
-                    </div>
+            <tbody id="countResults">
+                <tr>
+                    <td colspan="5">
+                        Loading inventory results...
+                    </td>
+                </tr>
+            </tbody>
+        </table>
 
-                    <div>
-                        <label for="maxQty">Maximum</label>
-                        <input
-                            id="maxQty"
-                            type="number"
-                            min="0"
-                            step="0.001"
-                            value="0"
-                            required>
-                    </div>
+    </div>
 
-                </div>
-
-                <label>
-                    <input
-                        id="ruleEnabled"
-                        type="checkbox"
-                        style="width:auto">
-                    Enable automatic suggestion
-                </label>
-
-                <p>
-                    <button type="submit">Save Rule</button>
-                </p>
-
-            </form>
-
-            <div class="tablewrap">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Item No.</th>
-                            <th>Description</th>
-                            <th>Rule</th>
-                            <th>Min</th>
-                            <th>Max</th>
-                        </tr>
-                    </thead>
-
-                    <tbody id="rules"></tbody>
-                </table>
-            </div>
-
-        </section>
-
-        <!-- Counting Sessions -->
-        <section class="card">
-
-            <h2>Counting Sessions</h2>
-
-            <p class="muted">
-                Admin closes a session to generate
-                its reorder suggestions.
-            </p>
-
-            <div class="tablewrap">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Category</th>
-                            <th>Created</th>
-                            <th>Status</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-
-                    <tbody id="sessions"></tbody>
-                </table>
-            </div>
-
-        </section>
-
-        <!-- Reorder Draft -->
-        <section class="card">
-
-            <div class="actions">
-                <h2>Reorder Draft</h2>
-
-                <button
-                    id="exportOrders"
-                    class="secondary"
-                    type="button">
-                    Export Approved CSV
-                </button>
-            </div>
-
-            <p class="muted">
-                Admin may change quantities and approve.
-                No purchase orders are sent automatically.
-            </p>
-
-            <div class="tablewrap">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Item No.</th>
-                            <th>Description</th>
-                            <th>Counted</th>
-                            <th>Suggested</th>
-                            <th>Order Qty</th>
-                            <th>Status</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-
-                    <tbody id="orders"></tbody>
-                </table>
-            </div>
-
-        </section>
-
-    </main>
-
-    <script type="module" src="./JS/admin.js"></script>
-
-</body>
-</html>
+</section>
