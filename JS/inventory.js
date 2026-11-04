@@ -8,6 +8,7 @@ import {
     message
 } from './api.js';
 
+// Authentication
 const auth = await guard();
 
 let category = null;
@@ -21,13 +22,13 @@ if (auth) {
     wireLogout();
 
     init().catch(error => {
+        console.error('Inventory initialization error:', error);
         message(error.message, true);
     });
 }
 
 // Initialize inventory page
 async function init() {
-
     const params = new URLSearchParams(window.location.search);
 
     const categoryId = params.get('category');
@@ -35,7 +36,7 @@ async function init() {
 
     if (!categoryId || !branchId) {
         throw new Error(
-            'Missing branch or category. Please return to Home and select both.'
+            'Missing branch or category. Return to Home and select both.'
         );
     }
 
@@ -51,7 +52,7 @@ async function init() {
 
     branch = result.data;
 
-    // Load category
+    // Load selected category
     result = await db
         .from('categories')
         .select('id,name')
@@ -67,7 +68,7 @@ async function init() {
     el('heading').textContent =
         `${branch.name} - ${category.name} Inventory`;
 
-    // Load category items
+    // Load items
     result = await db
         .from('items')
         .select('id,item_no,description,barcode')
@@ -82,7 +83,7 @@ async function init() {
 
     renderItems();
 
-    // Find an existing open session for this branch/category/user
+    // Find existing open session
     result = await db
         .from('count_sessions')
         .select('id,status')
@@ -97,9 +98,8 @@ async function init() {
 
     session = result.data?.[0] || null;
 
-    // Create a new session when none exists
+    // Create session if none exists
     if (!session) {
-
         result = await db
             .from('count_sessions')
             .insert({
@@ -114,15 +114,13 @@ async function init() {
         session = result.data;
     }
 
-    el('sessionId').textContent =
-        session.id.slice(0, 8);
+    el('sessionId').textContent = session.id.slice(0, 8);
 
     await loadCounts();
 }
 
-// Display matching items
+// Render item search results
 function renderItems() {
-
     const query = el('search').value.trim().toLowerCase();
 
     const filtered = items.filter(item =>
@@ -139,7 +137,6 @@ function renderItems() {
 
             <strong>${escapeHtml(item.description)}</strong>
             <small>${escapeHtml(item.item_no)}</small>
-
         </button>
     `).join('') || '<p>No matching items</p>';
 
@@ -154,13 +151,11 @@ function renderItems() {
 
 // Select item
 function choose(id) {
-
     selected = items.find(item => item.id === id);
 
     if (!selected) return;
 
     el('selected').hidden = false;
-
     el('itemName').textContent = selected.description;
     el('itemNo').textContent = selected.item_no;
 
@@ -168,12 +163,11 @@ function choose(id) {
     el('qty').focus();
 }
 
-// Search
+// Search input
 el('search').addEventListener('input', renderItems);
 
-// Save count
+// Save inventory count
 el('save').addEventListener('click', async () => {
-
     if (!selected || !session) {
         message('Please select an item first.', true);
         return;
@@ -194,7 +188,6 @@ el('save').addEventListener('click', async () => {
     el('save').disabled = true;
 
     try {
-
         const { error } = await db.rpc('record_count', {
             p_session: session.id,
             p_item: selected.id,
@@ -211,32 +204,41 @@ el('save').addEventListener('click', async () => {
         message('Count saved successfully.');
 
     } catch (error) {
-
+        console.error('Save count error:', error);
         message(error.message, true);
 
     } finally {
-
         el('save').disabled = false;
     }
 });
 
-// Load saved counts
- async function loadCounts() {      if (!session) return;      const { data, error } = await db         .from('count_entries')         .select(             'id,item_id,qty,created_at,items(item_no,description)'         )         .eq('session_id', session.id)         .order('created_at', { ascending: false })         .order('id', { ascending: false });      if (error) throw error;      // Keep only the latest count for each item     const latestCounts = new Map();      for (const entry of (data || [])) {         if (!latestCounts.has(entry.item_id)) {             latestCounts.set(entry.item_id, entry);         }     }      const counts = Array.from(latestCounts.values());      el('countList').innerHTML = counts.map(entry => `         <tr>             <td>${escapeHtml(entry.items?.item_no)}</td>             <td>${escapeHtml(entry.items?.description)}</td>             <td>${escapeHtml(entry.qty)}</td>         </tr>     `).join('') ||         '<tr><td colspan="3">No items counted yet</td></tr>';      el('total').textContent = counts.length; } {
-
+// Load latest count for each item
+async function loadCounts() {
     if (!session) return;
 
     const { data, error } = await db
         .from('count_entries')
         .select(
-            'id,qty,created_at,items(item_no,description)'
+            'id,item_id,qty,created_at,items(item_no,description)'
         )
         .eq('session_id', session.id)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .order('id', { ascending: false });
 
     if (error) throw error;
 
-    const counts = data || [];
+    // Keep only the latest reading for each item
+    const latestCounts = new Map();
 
+    for (const entry of (data || [])) {
+        if (!latestCounts.has(entry.item_id)) {
+            latestCounts.set(entry.item_id, entry);
+        }
+    }
+
+    const counts = Array.from(latestCounts.values());
+
+    // Display one row per item
     el('countList').innerHTML = counts.map(entry => `
         <tr>
             <td>${escapeHtml(entry.items?.item_no)}</td>
@@ -246,12 +248,12 @@ el('save').addEventListener('click', async () => {
     `).join('') ||
         '<tr><td colspan="3">No items counted yet</td></tr>';
 
+    // Number of unique items
     el('total').textContent = counts.length;
 }
 
 // Barcode scanner
 el('scan').addEventListener('click', async () => {
-
     const Html5Qrcode = window.Html5Qrcode;
 
     if (!Html5Qrcode) {
@@ -262,7 +264,6 @@ el('scan').addEventListener('click', async () => {
     if (scanner) return;
 
     try {
-
         el('scanner').hidden = false;
 
         scanner = new Html5Qrcode('scanner');
@@ -271,10 +272,12 @@ el('scan').addEventListener('click', async () => {
             { facingMode: 'environment' },
             {
                 fps: 10,
-                qrbox: { width: 250, height: 150 }
+                qrbox: {
+                    width: 250,
+                    height: 150
+                }
             },
             async code => {
-
                 await stopScanner();
 
                 const item = items.find(item =>
@@ -285,27 +288,25 @@ el('scan').addEventListener('click', async () => {
                 if (item) {
                     choose(item.id);
                 } else {
-                    message('Barcode not found in this category.', true);
+                    message(
+                        'Barcode not found in this category.',
+                        true
+                    );
                 }
             },
             () => {}
         );
 
     } catch (error) {
-
         message('Camera unavailable: ' + error.message, true);
-
         await stopScanner();
     }
 });
 
 // Stop scanner
 async function stopScanner() {
-
     if (scanner) {
-
         try {
-
             if (scanner.isScanning) {
                 await scanner.stop();
             }
@@ -313,7 +314,7 @@ async function stopScanner() {
             await scanner.clear();
 
         } catch (error) {
-            console.warn(error);
+            console.warn('Scanner stop error:', error);
         }
 
         scanner = null;
