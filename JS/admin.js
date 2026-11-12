@@ -1,11 +1,6 @@
 
 import {
-    db,
-    el,
-    guard,
-    wireLogout,
-    escapeHtml,
-    message
+    db, el, guard, wireLogout, escapeHtml, message
 } from './api.js';
 
 const auth = await guard(true);
@@ -17,14 +12,21 @@ let rules = [];
 let sessions = [];
 let reorders = [];
 
-if (auth) {
-    wireLogout();
+let arrangedItems = [];
+let savedOrder = [];
+let draggedId = null;
+let sortDirty = false;
 
-    try {
-        await refresh();
-    } catch (error) {
-        message(error.message, true);
-    }
+const $ = id => document.getElementById(id);
+const safe = value => escapeHtml(String(value ?? ''));
+
+function notify(error) {
+    console.error(error);
+    message(error.message || String(error), true);
+}
+
+function dateText(value) {
+    return value ? new Date(value).toLocaleString() : '';
 }
 
 async function get(table, select = '*') {
@@ -34,28 +36,21 @@ async function get(table, select = '*') {
         .limit(1000);
 
     if (error) throw error;
-
     return data || [];
 }
 
-function safe(value) {
-    return escapeHtml(String(value ?? ''));
+if (auth) {
+    wireLogout();
+    try {
+        await refresh();
+    } catch (error) {
+        notify(error);
+    }
 }
 
-function notify(error) {
-    console.error(error);
-    message(error.message || String(error), true);
-}
-
-function dateText(value) {
-    return value
-        ? new Date(value).toLocaleString()
-        : '';
-}
-
-// --------------------------------------------------
-// Load administration data
-// --------------------------------------------------
+// =============================================
+// LOAD ALL ADMIN DATA
+// =============================================
 
 async function refresh() {
     [
@@ -84,12 +79,12 @@ async function refresh() {
         a.name.localeCompare(b.name)
     );
 
-    items.sort((a, b) =>
-        a.item_no.localeCompare(b.item_no)
-    );
-
     branches.sort((a, b) =>
         a.code.localeCompare(b.code)
+    );
+
+    items.sort((a, b) =>
+        String(a.item_no).localeCompare(String(b.item_no))
     );
 
     renderCategories();
@@ -98,122 +93,111 @@ async function refresh() {
     renderRules();
     renderSessions();
     renderOrders();
+    initializeArrangeItems();
 
     await loadCountResults();
 }
 
-// --------------------------------------------------
-// Categories
-// --------------------------------------------------
+// =============================================
+// CATEGORIES
+// =============================================
 
 function renderCategories() {
-    el('categorySelect').innerHTML =
-        categories.map(category => `
-            <option value="${safe(category.id)}">
-                ${safe(category.name)}
-            </option>
-        `).join('');
+    $('categorySelect').innerHTML = categories.map(c => `
+        <option value="${safe(c.id)}">
+            ${safe(c.name)}
+        </option>
+    `).join('');
 
-    el('categoryList').innerHTML =
-        categories.map(category => `
-            <span class="chip">
-                ${safe(category.name)}
-            </span>
-        `).join('');
+    $('categoryList').innerHTML = categories.map(c => `
+        <span class="chip">${safe(c.name)}</span>
+    `).join('');
 }
 
-// --------------------------------------------------
-// Items
-// --------------------------------------------------
+// =============================================
+// ITEMS
+// =============================================
 
 function renderItems() {
-    el('itemSelect').innerHTML =
-        items.map(item => `
-            <option value="${safe(item.id)}">
-                ${safe(item.item_no)} -
-                ${safe(item.description)}
-            </option>
-        `).join('');
+    $('itemSelect').innerHTML = items.map(i => `
+        <option value="${safe(i.id)}">
+            ${safe(i.item_no)} - ${safe(i.description)}
+        </option>
+    `).join('');
 }
 
-// --------------------------------------------------
-// Branch dropdowns
-// --------------------------------------------------
+// =============================================
+// BRANCHES
+// =============================================
 
 function renderBranches() {
-    const ruleBranch = el('ruleBranch');
-    const resultsBranch = el('resultsBranch');
-    const resultsCategory = el('resultsCategory');
+    const ruleBranch = $('ruleBranch');
+    const resultsBranch = $('resultsBranch');
+    const resultsCategory = $('resultsCategory');
 
-    const previousRule = ruleBranch.value;
-    const previousResults = resultsBranch.value;
-    const previousCategory = resultsCategory.value;
+    const oldRule = ruleBranch.value;
+    const oldResult = resultsBranch.value;
+    const oldCategory = resultsCategory.value;
 
-    const branchOptions = branches.map(branch => `
-        <option value="${safe(branch.id)}">
-            ${safe(branch.code)} -
-            ${safe(branch.name)}
+    const options = branches.map(b => `
+        <option value="${safe(b.id)}">
+            ${safe(b.code)} - ${safe(b.name)}
         </option>
     `).join('');
 
     ruleBranch.innerHTML =
-        '<option value="">Select Branch</option>' +
-        branchOptions;
+        '<option value="">Select Branch</option>' + options;
 
     resultsBranch.innerHTML =
-        '<option value="">All Branches</option>' +
-        branchOptions;
+        '<option value="">All Branches</option>' + options;
 
     resultsCategory.innerHTML =
         '<option value="">All Categories</option>' +
-        categories.map(category => `
-            <option value="${safe(category.id)}">
-                ${safe(category.name)}
+        categories.map(c => `
+            <option value="${safe(c.id)}">
+                ${safe(c.name)}
             </option>
         `).join('');
 
-    if (branches.some(b => b.id === previousRule)) {
-        ruleBranch.value = previousRule;
+    if (branches.some(b => b.id === oldRule)) {
+        ruleBranch.value = oldRule;
     }
 
-    if (branches.some(b => b.id === previousResults)) {
-        resultsBranch.value = previousResults;
+    if (branches.some(b => b.id === oldResult)) {
+        resultsBranch.value = oldResult;
     }
 
-    if (categories.some(c => c.id === previousCategory)) {
-        resultsCategory.value = previousCategory;
+    if (categories.some(c => c.id === oldCategory)) {
+        resultsCategory.value = oldCategory;
     }
 
     updateRuleFields();
 }
 
-// --------------------------------------------------
-// Min / Max per branch
-// --------------------------------------------------
+// =============================================
+// MIN / MAX
+// =============================================
 
 function selectedRule() {
-    const branchId = el('ruleBranch').value;
-    const itemId = el('itemSelect').value;
-
-    return rules.find(rule =>
-        rule.branch_id === branchId &&
-        rule.item_id === itemId
+    return rules.find(r =>
+        r.branch_id === $('ruleBranch').value &&
+        r.item_id === $('itemSelect').value
     );
 }
 
 function updateRuleFields() {
-    const rule = selectedRule();
+    const r = selectedRule();
 
-    el('minQty').value = rule?.min_qty ?? 0;
-    el('maxQty').value = rule?.max_qty ?? 0;
-    el('ruleEnabled').checked = !!rule?.enabled;
+    $('minQty').value = r?.min_qty ?? 0;
+    $('maxQty').value = r?.max_qty ?? 0;
+    $('ruleEnabled').checked = !!r?.enabled;
 }
 
 function renderRules() {
-    const branchId = el('ruleBranch').value;
+    const branchId = $('ruleBranch').value;
 
     if (!branchId) {
-        el('rules').innerHTML = `
+        $('rules').innerHTML = `
             <tr>
                 <td colspan="5">
                     Select a branch to view stock rules.
@@ -223,73 +207,342 @@ function renderRules() {
         return;
     }
 
-    const branchRules = rules.filter(rule =>
-        rule.branch_id === branchId
+    const filtered = rules.filter(r =>
+        r.branch_id === branchId
     );
 
-    el('rules').innerHTML =
-        branchRules.map(rule => {
-            const item = items.find(i =>
-                i.id === rule.item_id
-            );
+    $('rules').innerHTML = filtered.map(r => {
+        const i = items.find(x => x.id === r.item_id);
 
-            return `
-                <tr>
-                    <td>${safe(item?.item_no)}</td>
-                    <td>${safe(item?.description)}</td>
-                    <td>${rule.enabled ? 'Enabled' : 'Off'}</td>
-                    <td>${safe(rule.min_qty)}</td>
-                    <td>${safe(rule.max_qty)}</td>
-                </tr>
-            `;
-        }).join('') || `
+        return `
             <tr>
-                <td colspan="5">
-                    No stock rules for this branch.
-                </td>
+                <td>${safe(i?.item_no)}</td>
+                <td>${safe(i?.description)}</td>
+                <td>${r.enabled ? 'Enabled' : 'Off'}</td>
+                <td>${safe(r.min_qty)}</td>
+                <td>${safe(r.max_qty)}</td>
             </tr>
         `;
+    }).join('') || `
+        <tr>
+            <td colspan="5">No stock rules.</td>
+        </tr>
+    `;
 }
 
-// --------------------------------------------------
-// Counting sessions
-// --------------------------------------------------
+// =============================================
+// ARRANGE ITEMS - DRAG & DROP
+// =============================================
+
+function sortMessage(text, isError = false) {
+    const target = $('sortMessage');
+    if (!target) return;
+
+    target.textContent = text;
+    target.classList.toggle('error', isError);
+}
+
+function initializeArrangeItems() {
+    if (!$('sortCategory') || !$('sortableItems')) return;
+
+    const select = $('sortCategory');
+    const previous = select.value;
+
+    select.innerHTML =
+        '<option value="">Select Category</option>' +
+        categories.map(c => `
+            <option value="${safe(c.id)}">
+                ${safe(c.name)}
+            </option>
+        `).join('');
+
+    if (categories.some(c => c.id === previous)) {
+        select.value = previous;
+    }
+
+    loadArrangeItems();
+}
+
+function loadArrangeItems() {
+    const categoryId = $('sortCategory')?.value;
+
+    arrangedItems = [];
+    savedOrder = [];
+    sortDirty = false;
+
+    if (!categoryId) {
+        $('sortableItems').innerHTML =
+            '<p>Select a category first.</p>';
+        sortMessage('');
+        return;
+    }
+
+    arrangedItems = items
+        .filter(i =>
+            i.category_id === categoryId &&
+            i.active !== false
+        )
+        .sort((a, b) =>
+            (a.sort_order ?? 999999) -
+            (b.sort_order ?? 999999) ||
+            String(a.item_no).localeCompare(String(b.item_no))
+        );
+
+    savedOrder = arrangedItems.map(i => i.id);
+
+    if ($('sortSearch')) {
+        $('sortSearch').value = '';
+    }
+
+    renderArrangeItems();
+    sortMessage(`${arrangedItems.length} items loaded.`);
+}
+
+function moveItem(sourceId, targetId) {
+    if (sourceId === targetId) return;
+
+    const from = arrangedItems.findIndex(i =>
+        i.id === sourceId
+    );
+
+    const to = arrangedItems.findIndex(i =>
+        i.id === targetId
+    );
+
+    if (from < 0 || to < 0) return;
+
+    const [moved] = arrangedItems.splice(from, 1);
+    arrangedItems.splice(to, 0, moved);
+
+    sortDirty = true;
+    renderArrangeItems();
+    sortMessage('Order changed. Click Save Order.');
+}
+
+function renderArrangeItems() {
+    const container = $('sortableItems');
+    if (!container) return;
+
+    const search = ($('sortSearch')?.value || '')
+        .trim()
+        .toLowerCase();
+
+    const filtered = arrangedItems.filter(i =>
+        String(i.item_no).toLowerCase().includes(search) ||
+        String(i.description).toLowerCase().includes(search)
+    );
+
+    // Prevent accidental reordering of a filtered list.
+    const canDrag = search === '';
+
+    container.innerHTML = filtered.map(i => {
+        const position = arrangedItems.findIndex(
+            x => x.id === i.id
+        ) + 1;
+
+        return `
+            <div
+                class="sortable-item"
+                data-id="${safe(i.id)}"
+                draggable="${canDrag}">
+
+                <span class="drag-handle">
+                    ${canDrag ? '☰' : '•'}
+                </span>
+
+                <span>${position}</span>
+
+                <div class="sortable-item-info">
+                    <strong>${safe(i.description)}</strong>
+                    <small>${safe(i.item_no)}</small>
+                </div>
+
+            </div>
+        `;
+    }).join('') || '<p>No matching items.</p>';
+
+    if (!canDrag) {
+        sortMessage(
+            'Search is active. Clear search to rearrange.'
+        );
+        return;
+    }
+
+    container.querySelectorAll('.sortable-item')
+        .forEach(row => {
+
+            row.addEventListener('dragstart', event => {
+                draggedId = row.dataset.id;
+                row.classList.add('dragging');
+
+                event.dataTransfer.effectAllowed = 'move';
+                event.dataTransfer.setData(
+                    'text/plain',
+                    draggedId
+                );
+            });
+
+            row.addEventListener('dragover', event => {
+                event.preventDefault();
+                event.dataTransfer.dropEffect = 'move';
+            });
+
+            row.addEventListener('drop', event => {
+                event.preventDefault();
+
+                if (draggedId) {
+                    moveItem(draggedId, row.dataset.id);
+                }
+            });
+
+            row.addEventListener('dragend', () => {
+                draggedId = null;
+                row.classList.remove('dragging');
+            });
+        });
+}
+
+$('sortCategory')?.addEventListener(
+    'change',
+    () => {
+        if (sortDirty && !confirm(
+            'Discard unsaved order changes?'
+        )) {
+            return;
+        }
+        loadArrangeItems();
+    }
+);
+
+$('sortSearch')?.addEventListener(
+    'input',
+    renderArrangeItems
+);
+
+$('resetItemOrder')?.addEventListener(
+    'click',
+    () => {
+        arrangedItems = savedOrder
+            .map(id => arrangedItems.find(i => i.id === id))
+            .filter(Boolean);
+
+        sortDirty = false;
+
+        if ($('sortSearch')) {
+            $('sortSearch').value = '';
+        }
+
+        renderArrangeItems();
+        sortMessage('Unsaved changes discarded.');
+    }
+);
+
+$('saveItemOrder')?.addEventListener(
+    'click',
+    async () => {
+        const button = $('saveItemOrder');
+
+        if (!$('sortCategory').value) {
+            sortMessage('Select a category first.', true);
+            return;
+        }
+
+        if (!sortDirty) {
+            sortMessage('No changes to save.');
+            return;
+        }
+
+        button.disabled = true;
+        sortMessage('Saving order...');
+
+        try {
+            // Save all positions, including items
+            // not visible during previous searches.
+            for (let index = 0;
+                 index < arrangedItems.length;
+                 index++) {
+
+                const item = arrangedItems[index];
+
+                const { data, error } = await db
+                    .from('items')
+                    .update({
+                        sort_order: index + 1
+                    })
+                    .eq('id', item.id)
+                    .select('id');
+
+                if (error) throw error;
+
+                if (!data || data.length !== 1) {
+                    throw new Error(
+                        'Item update was not permitted: ' +
+                        item.item_no
+                    );
+                }
+            }
+
+            arrangedItems.forEach((item, index) => {
+                item.sort_order = index + 1;
+            });
+
+            savedOrder = arrangedItems.map(i => i.id);
+            sortDirty = false;
+
+            sortMessage('Item order saved successfully.');
+            message('Item order saved successfully.');
+
+        } catch (error) {
+            console.error(error);
+
+            sortMessage(
+                'Save failed: ' + error.message,
+                true
+            );
+
+        } finally {
+            button.disabled = false;
+        }
+    }
+);
+
+// =============================================
+// COUNTING SESSIONS
+// =============================================
 
 function renderSessions() {
     sessions.sort((a, b) =>
         b.created_at.localeCompare(a.created_at)
     );
 
-    el('sessions').innerHTML =
-        sessions.map(session => `
-            <tr>
-                <td>
-                    ${safe(session.branches?.code)} -
-                    ${safe(session.categories?.name)}
-                </td>
+    $('sessions').innerHTML = sessions.map(s => `
+        <tr>
+            <td>
+                ${safe(s.branches?.code)} -
+                ${safe(s.categories?.name)}
+            </td>
 
-                <td>${safe(dateText(session.created_at))}</td>
+            <td>${safe(dateText(s.created_at))}</td>
+            <td>${safe(s.status)}</td>
 
-                <td>${safe(session.status)}</td>
+            <td>
+                ${s.status === 'open'
+                    ? `<button type="button"
+                         data-close="${safe(s.id)}">
+                         Close & Generate
+                       </button>`
+                    : ''}
+            </td>
+        </tr>
+    `).join('');
 
-                <td>
-                    ${session.status === 'open'
-                        ? `<button
-                            type="button"
-                            data-close="${safe(session.id)}">
-                            Close & Generate
-                           </button>`
-                        : ''}
-                </td>
-            </tr>
-        `).join('');
-
-    el('sessions')
+    $('sessions')
         .querySelectorAll('[data-close]')
         .forEach(button => {
+
             button.addEventListener('click', async () => {
                 if (!confirm(
-                    'Close this session and generate reorder suggestions?'
+                    'Close this session and generate orders?'
                 )) return;
 
                 button.disabled = true;
@@ -297,18 +550,14 @@ function renderSessions() {
                 try {
                     const { error } = await db.rpc(
                         'close_count_session',
-                        {
-                            p_session: button.dataset.close
-                        }
+                        { p_session: button.dataset.close }
                     );
 
                     if (error) throw error;
 
                     await refresh();
+                    message('Session closed successfully.');
 
-                    message(
-                        'Session closed and reorder suggestions generated.'
-                    );
                 } catch (error) {
                     notify(error);
                     button.disabled = false;
@@ -317,74 +566,69 @@ function renderSessions() {
         });
 }
 
-// --------------------------------------------------
-// Inventory count results
-// --------------------------------------------------
+// =============================================
+// INVENTORY COUNT RESULTS
+// =============================================
 
 async function loadCountResults() {
-    const tbody = el('countResults');
-    const status = el('countResultsMessage');
+    const tbody = $('countResults');
+    const status = $('countResultsMessage');
 
     tbody.innerHTML = `
-        <tr>
-            <td colspan="5">Loading...</td>
-        </tr>
+        <tr><td colspan="5">Loading...</td></tr>
     `;
 
     status.textContent = '';
+    status.classList.remove('error');
 
     try {
-        const branchFilter = el('resultsBranch').value;
-        const categoryFilter = el('resultsCategory').value;
+        const branchId = $('resultsBranch').value;
+        const categoryId = $('resultsCategory').value;
 
-        // Read sessions, including open and closed
-        let sessionQuery = db
+        let query = db
             .from('count_sessions')
             .select('id,branch_id,category_id')
             .order('created_at', {
                 ascending: false
             });
 
-        if (branchFilter) {
-            sessionQuery = sessionQuery.eq(
-                'branch_id',
-                branchFilter
-            );
+        if (branchId) {
+            query = query.eq('branch_id', branchId);
         }
 
-        if (categoryFilter) {
-            sessionQuery = sessionQuery.eq(
-                'category_id',
-                categoryFilter
-            );
+        if (categoryId) {
+            query = query.eq('category_id', categoryId);
         }
 
-        const { data: filteredSessions, error: sessionError } =
-            await sessionQuery.limit(1000);
+        const { data: sessionData, error: sessionError } =
+            await query.limit(1000);
 
         if (sessionError) throw sessionError;
 
-        const sessionList = filteredSessions || [];
+        const sessionList = sessionData || [];
 
         if (!sessionList.length) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="5">
-                        No counting sessions found.
-                    </td>
+                    <td colspan="5">No sessions found.</td>
                 </tr>
             `;
             return;
         }
 
-        const sessionIds = sessionList.map(s => s.id);
+        const sessionMap = new Map(
+            sessionList.map(s => [s.id, s])
+        );
 
         const { data, error } = await db
             .from('count_entries')
             .select(
                 'id,session_id,item_id,qty,created_at,items(item_no,description)'
             )
-            .in('session_id', sessionIds)
+            .in(
+                'session_id',
+                sessionList.map(s => s.id)
+            )
             .order('created_at', {
                 ascending: false
             })
@@ -395,57 +639,47 @@ async function loadCountResults() {
 
         if (error) throw error;
 
-        const sessionMap = new Map(
-            sessionList.map(s => [s.id, s])
-        );
-
-        const branchMap = new Map(
-            branches.map(b => [b.id, b])
-        );
-
-        // Latest reading per branch and item
         const latest = new Map();
 
         for (const entry of (data || [])) {
-            const countSession =
-                sessionMap.get(entry.session_id);
+            const session = sessionMap.get(
+                entry.session_id
+            );
 
-            if (!countSession) continue;
+            if (!session) continue;
 
             const key =
-                countSession.branch_id + ':' + entry.item_id;
+                session.branch_id + ':' + entry.item_id;
 
             if (!latest.has(key)) {
                 latest.set(key, {
                     ...entry,
-                    branch_id: countSession.branch_id
+                    branch_id: session.branch_id
                 });
             }
         }
 
         const results = [...latest.values()];
 
-        tbody.innerHTML =
-            results.map(entry => {
-                const branch =
-                    branchMap.get(entry.branch_id);
+        tbody.innerHTML = results.map(entry => {
+            const branch = branches.find(
+                b => b.id === entry.branch_id
+            );
 
-                return `
-                    <tr>
-                        <td>${safe(branch?.code)}</td>
-                        <td>${safe(entry.items?.item_no)}</td>
-                        <td>${safe(entry.items?.description)}</td>
-                        <td>${safe(entry.qty)}</td>
-                        <td>${safe(dateText(entry.created_at))}</td>
-                    </tr>
-                `;
-            }).join('') || `
+            return `
                 <tr>
-                    <td colspan="5">
-                        No counted items found.
-                    </td>
+                    <td>${safe(branch?.code)}</td>
+                    <td>${safe(entry.items?.item_no)}</td>
+                    <td>${safe(entry.items?.description)}</td>
+                    <td>${safe(entry.qty)}</td>
+                    <td>${safe(dateText(entry.created_at))}</td>
                 </tr>
             `;
+        }).join('') || `
+            <tr>
+                <td colspan="5">No counted items.</td>
+            </tr>
+        `;
 
         status.textContent =
             `${results.length} unique counted items`;
@@ -466,64 +700,64 @@ async function loadCountResults() {
     }
 }
 
-// --------------------------------------------------
-// Reorder drafts
-// --------------------------------------------------
+// =============================================
+// REORDER DRAFTS
+// =============================================
 
 function renderOrders() {
-    el('orders').innerHTML =
-        reorders.map(order => `
-            <tr>
-                <td>${safe(order.items?.item_no)}</td>
-                <td>${safe(order.items?.description)}</td>
-                <td>${safe(order.counted_qty)}</td>
-                <td>${safe(order.suggested_qty)}</td>
+    $('orders').innerHTML = reorders.map(o => `
+        <tr>
+            <td>${safe(o.items?.item_no)}</td>
+            <td>${safe(o.items?.description)}</td>
+            <td>${safe(o.counted_qty)}</td>
+            <td>${safe(o.suggested_qty)}</td>
 
-                <td>
-                    <input
-                        type="number"
-                        min="0"
-                        step="0.001"
-                        id="qty-${safe(order.id)}"
-                        value="${safe(order.order_qty)}">
-                </td>
+            <td>
+                <input
+                    type="number"
+                    min="0"
+                    step="0.001"
+                    id="qty-${safe(o.id)}"
+                    value="${safe(o.order_qty)}">
+            </td>
 
-                <td>
-                    <select id="status-${safe(order.id)}">
-                        <option value="draft"
-                            ${order.status === 'draft' ? 'selected' : ''}>
-                            draft
-                        </option>
-                        <option value="approved"
-                            ${order.status === 'approved' ? 'selected' : ''}>
-                            approved
-                        </option>
-                        <option value="cancelled"
-                            ${order.status === 'cancelled' ? 'selected' : ''}>
-                            cancelled
-                        </option>
-                    </select>
-                </td>
+            <td>
+                <select id="status-${safe(o.id)}">
+                    <option value="draft"
+                        ${o.status === 'draft' ? 'selected' : ''}>
+                        draft
+                    </option>
 
-                <td>
-                    <button
-                        type="button"
-                        data-save="${safe(order.id)}">
-                        Save
-                    </button>
-                </td>
-            </tr>
-        `).join('');
+                    <option value="approved"
+                        ${o.status === 'approved' ? 'selected' : ''}>
+                        approved
+                    </option>
 
-    el('orders')
+                    <option value="cancelled"
+                        ${o.status === 'cancelled' ? 'selected' : ''}>
+                        cancelled
+                    </option>
+                </select>
+            </td>
+
+            <td>
+                <button type="button"
+                    data-save="${safe(o.id)}">
+                    Save
+                </button>
+            </td>
+        </tr>
+    `).join('');
+
+    $('orders')
         .querySelectorAll('[data-save]')
         .forEach(button => {
+
             button.addEventListener('click', async () => {
                 const id = button.dataset.save;
-
-                const raw = el('qty-' + id).value.trim();
+                const raw = $('qty-' + id).value.trim();
                 const quantity = Number(raw);
-                const status = el('status-' + id).value;
+                const status = $('status-' + id).value;
 
                 if (
                     raw === '' ||
@@ -549,7 +783,7 @@ function renderOrders() {
                     if (error) throw error;
 
                     await refresh();
-                    message('Order updated successfully.');
+                    message('Order updated.');
 
                 } catch (error) {
                     notify(error);
@@ -559,181 +793,209 @@ function renderOrders() {
         });
 }
 
-// --------------------------------------------------
-// Forms and events
-// --------------------------------------------------
+// =============================================
+// ADD CATEGORY
+// =============================================
 
-el('categoryForm').addEventListener('submit', async event => {
-    event.preventDefault();
+$('categoryForm').addEventListener(
+    'submit',
+    async event => {
+        event.preventDefault();
 
-    try {
-        const name = el('categoryName').value.trim();
+        try {
+            const name = $('categoryName').value.trim();
+            if (!name) return;
 
-        if (!name) return;
+            const { error } = await db
+                .from('categories')
+                .insert({ name });
 
-        const { error } = await db
-            .from('categories')
-            .insert({ name });
+            if (error) throw error;
 
-        if (error) throw error;
+            event.target.reset();
+            await refresh();
+            message('Category added.');
 
-        event.target.reset();
-        await refresh();
-        message('Category added.');
-
-    } catch (error) {
-        notify(error);
+        } catch (error) {
+            notify(error);
+        }
     }
-});
+);
 
-el('itemForm').addEventListener('submit', async event => {
-    event.preventDefault();
+// =============================================
+// ADD / UPDATE ITEM
+// =============================================
 
-    try {
-        const payload = {
-            item_no: el('itemNo').value.trim(),
-            description: el('description').value.trim(),
-            barcode: el('barcode').value.trim() || null,
-            category_id: el('categorySelect').value
-        };
+$('itemForm').addEventListener(
+    'submit',
+    async event => {
+        event.preventDefault();
 
-        const { error } = await db
-            .from('items')
-            .upsert(payload, {
-                onConflict: 'item_no'
-            });
+        try {
+            const payload = {
+                item_no: $('itemNo').value.trim(),
+                description: $('description').value.trim(),
+                barcode: $('barcode').value.trim() || null,
+                category_id: $('categorySelect').value
+            };
 
-        if (error) throw error;
+            const { error } = await db
+                .from('items')
+                .upsert(payload, {
+                    onConflict: 'item_no'
+                });
 
-        event.target.reset();
-        await refresh();
-        message('Item saved.');
+            if (error) throw error;
 
-    } catch (error) {
-        notify(error);
+            event.target.reset();
+            await refresh();
+            message('Item saved.');
+
+        } catch (error) {
+            notify(error);
+        }
     }
-});
+);
 
-el('ruleBranch').addEventListener('change', () => {
+// =============================================
+// MIN / MAX EVENTS
+// =============================================
+
+$('ruleBranch').addEventListener('change', () => {
     updateRuleFields();
     renderRules();
 });
 
-el('itemSelect').addEventListener('change', updateRuleFields);
+$('itemSelect').addEventListener(
+    'change',
+    updateRuleFields
+);
 
-el('ruleForm').addEventListener('submit', async event => {
-    event.preventDefault();
+$('ruleForm').addEventListener(
+    'submit',
+    async event => {
+        event.preventDefault();
 
-    try {
-        const branchId = el('ruleBranch').value;
-        const itemId = el('itemSelect').value;
+        try {
+            const branchId = $('ruleBranch').value;
+            const itemId = $('itemSelect').value;
 
-        const min = Number(el('minQty').value);
-        const max = Number(el('maxQty').value);
+            const min = Number($('minQty').value);
+            const max = Number($('maxQty').value);
 
-        if (!branchId || !itemId) {
-            throw new Error('Select branch and item.');
+            if (!branchId || !itemId) {
+                throw new Error('Select branch and item.');
+            }
+
+            if (
+                !Number.isFinite(min) ||
+                !Number.isFinite(max) ||
+                min < 0 ||
+                max < min
+            ) {
+                throw new Error(
+                    'Maximum must be >= minimum.'
+                );
+            }
+
+            const { error } = await db
+                .from('stock_rules')
+                .upsert({
+                    branch_id: branchId,
+                    item_id: itemId,
+                    min_qty: min,
+                    max_qty: max,
+                    enabled: $('ruleEnabled').checked
+                }, {
+                    onConflict: 'branch_id,item_id'
+                });
+
+            if (error) throw error;
+
+            await refresh();
+            message('Stock rule saved.');
+
+        } catch (error) {
+            notify(error);
         }
-
-        if (
-            !Number.isFinite(min) ||
-            !Number.isFinite(max) ||
-            min < 0 ||
-            max < min
-        ) {
-            throw new Error(
-                'Maximum must be greater than or equal to minimum.'
-            );
-        }
-
-        const { error } = await db
-            .from('stock_rules')
-            .upsert({
-                branch_id: branchId,
-                item_id: itemId,
-                min_qty: min,
-                max_qty: max,
-                enabled: el('ruleEnabled').checked
-            }, {
-                onConflict: 'branch_id,item_id'
-            });
-
-        if (error) throw error;
-
-        await refresh();
-        message('Stock rule saved.');
-
-    } catch (error) {
-        notify(error);
     }
-});
+);
 
-el('resultsBranch').addEventListener(
+// =============================================
+// RESULTS EVENTS
+// =============================================
+
+$('resultsBranch').addEventListener(
     'change',
     loadCountResults
 );
 
-el('resultsCategory').addEventListener(
+$('resultsCategory').addEventListener(
     'change',
     loadCountResults
 );
 
-el('refreshCounts').addEventListener(
+$('refreshCounts').addEventListener(
     'click',
     loadCountResults
 );
 
-// --------------------------------------------------
-// Export approved orders
-// --------------------------------------------------
+// =============================================
+// EXPORT APPROVED ORDERS
+// =============================================
 
-el('exportOrders').addEventListener('click', () => {
-    const approved = reorders.filter(order =>
-        order.status === 'approved'
-    );
+$('exportOrders').addEventListener(
+    'click',
+    () => {
+        const approved = reorders.filter(
+            o => o.status === 'approved'
+        );
 
-    const rows = [
-        [
-            'Branch',
-            'ItemNo',
-            'Description',
-            'CountedQty',
-            'SuggestedQty',
-            'OrderQty',
-            'Status'
-        ],
-        ...approved.map(order => [
-            branches.find(b =>
-                b.id === order.branch_id
-            )?.code,
-            order.items?.item_no,
-            order.items?.description,
-            order.counted_qty,
-            order.suggested_qty,
-            order.order_qty,
-            order.status
-        ])
-    ];
+        const rows = [
+            [
+                'Branch',
+                'ItemNo',
+                'Description',
+                'CountedQty',
+                'SuggestedQty',
+                'OrderQty',
+                'Status'
+            ],
+            ...approved.map(o => [
+                branches.find(
+                    b => b.id === o.branch_id
+                )?.code,
+                o.items?.item_no,
+                o.items?.description,
+                o.counted_qty,
+                o.suggested_qty,
+                o.order_qty,
+                o.status
+            ])
+        ];
 
-    const csv = rows.map(row =>
-        row.map(value =>
-            '"' +
-            String(value ?? '').replace(/"/g, '""') +
-            '"'
-        ).join(',')
-    ).join('\r\n');
+        const csv = rows.map(row =>
+            row.map(value =>
+                '"' +
+                String(value ?? '').replace(/"/g, '""') +
+                '"'
+            ).join(',')
+        ).join('\r\n');
 
-    const blob = new Blob(
-        ['\ufeff' + csv],
-        { type: 'text/csv;charset=utf-8' }
-    );
+        const blob = new Blob(
+            ['\ufeff' + csv],
+            { type: 'text/csv;charset=utf-8' }
+        );
 
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
 
-    link.href = url;
-    link.download = 'adi-approved-orders.csv';
-    link.click();
+        link.href = url;
+        link.download = 'adi-approved-orders.csv';
+        link.click();
 
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-});
+        setTimeout(() => {
+            URL.revokeObjectURL(url);
+        }, 1000);
+    }
+);
