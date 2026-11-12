@@ -229,6 +229,66 @@
 
         </section>
 
+<!-- Arrange Items -->
+<section class="card" id="arrangeItemsSection">
+
+    <h2>Arrange Items</h2>
+
+    <p class="muted">
+        Select a category and drag items to arrange
+        their display order for inventory staff.
+    </p>
+
+    <div class="two">
+
+        <div>
+            <label for="sortCategory">
+                Select Category
+            </label>
+
+            <select id="sortCategory">
+                <option value="">
+                    Select Category
+                </option>
+            </select>
+        </div>
+
+        <div>
+            <label for="sortSearch">
+                Search Item
+            </label>
+
+            <input
+                id="sortSearch"
+                type="search"
+                placeholder="Search by item number or description">
+        </div>
+
+    </div>
+
+    <p id="sortMessage" class="message" role="status"></p>
+
+    <div id="sortableItems" class="sortable-list"></div>
+
+    <div class="actions" style="margin-top:20px">
+
+        <button
+            id="saveItemOrder"
+            type="button">
+            Save Order
+        </button>
+
+        <button
+            id="resetItemOrder"
+            class="secondary"
+            type="button">
+            Reset Changes
+        </button>
+
+    </div>
+
+</section>
+
         <!-- Inventory Count Results -->
         <section class="card">
 
