@@ -271,7 +271,7 @@ async function loadCounts() {
 
     // Number of unique items
     el('total').textContent = counts.length;
-}
+
 
 // Barcode scanner
 el('scan').addEventListener('click', async () => {
