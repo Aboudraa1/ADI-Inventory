@@ -99,15 +99,11 @@ async function init() {
     el('heading').textContent =
         `${branch.name || branch.code} - ${category.name} Inventory`;
 
-    // ======================================
-    // LOAD ITEMS BY ADMIN SORT ORDER
-    // ======================================
-
+   
+    // Load items in the exact order saved by Admin
     result = await db
         .from('items')
-        .select(
-            'id,item_no,description,barcode,sort_order'
-        )
+        .select('id,item_no,description,barcode,sort_order')
         .eq('category_id', categoryId)
         .eq('active', true)
         .order('sort_order', {
@@ -121,9 +117,24 @@ async function init() {
 
     if (result.error) throw result.error;
 
-    items = result.data || [];
+    items = (result.data || []).sort((a, b) => {
+        const orderA = a.sort_order ?? Number.MAX_SAFE_INTEGER;
+        const orderB = b.sort_order ?? Number.MAX_SAFE_INTEGER;
+
+        return orderA - orderB ||
+            String(a.item_no).localeCompare(String(b.item_no));
+    });
+
+    console.log(
+        'Inventory item order:',
+        items.slice(0, 10).map(item => ({
+            item_no: item.item_no,
+            sort_order: item.sort_order
+        }))
+    );
 
     renderItems();
+
 
     // ======================================
     // FIND OR CREATE TODAY'S SESSION
