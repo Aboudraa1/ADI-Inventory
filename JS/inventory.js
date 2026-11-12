@@ -8,7 +8,10 @@ import {
     message
 } from './api.js';
 
-// Authentication
+// ==========================================
+// AUTHENTICATION
+// ==========================================
+
 const auth = await guard();
 
 let category = null;
@@ -17,19 +20,47 @@ let session = null;
 let items = [];
 let selected = null;
 let scanner = null;
+let initializing = true;
 
 if (auth) {
     wireLogout();
 
     init().catch(error => {
         console.error('Inventory initialization error:', error);
-        message(error.message, true);
+        message(error.message || String(error), true);
+    }).finally(() => {
+        initializing = false;
     });
 }
 
-// Initialize inventory page
+// ==========================================
+// LEBANON DATE
+// ==========================================
+
+function getLebanonDate() {
+    const parts = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'Asia/Beirut',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+    }).formatToParts(new Date());
+
+    const values = Object.fromEntries(
+        parts.map(part => [part.type, part.value])
+    );
+
+    return `${values.year}-${values.month}-${values.day}`;
+}
+
+// ==========================================
+// INITIALIZE INVENTORY
+// ==========================================
+
 async function init() {
-    const params = new URLSearchParams(window.location.search);
+
+    const params = new URLSearchParams(
+        window.location.search
+    );
 
     const categoryId = params.get('category');
     const branchId = params.get('branch');
@@ -40,7 +71,7 @@ async function init() {
         );
     }
 
-    // Verify selected branch
+    // Load branch
     let result = await db
         .from('branches')
         .select('id,code,name')
@@ -52,7 +83,7 @@ async function init() {
 
     branch = result.data;
 
-    // Load selected category
+    // Load category
     result = await db
         .from('categories')
         .select('id,name')
@@ -64,17 +95,28 @@ async function init() {
 
     category = result.data;
 
-    // Display branch and category
+    // Display heading
     el('heading').textContent =
-        `${branch.name} - ${category.name} Inventory`;
+        `${branch.name || branch.code} - ${category.name} Inventory`;
 
-    // Load items
+    // ======================================
+    // LOAD ITEMS BY ADMIN SORT ORDER
+    // ======================================
+
     result = await db
         .from('items')
-        .select('id,item_no,description,barcode')
+        .select(
+            'id,item_no,description,barcode,sort_order'
+        )
         .eq('category_id', categoryId)
         .eq('active', true)
-        .order('description')
+        .order('sort_order', {
+            ascending: true,
+            nullsFirst: false
+        })
+        .order('item_no', {
+            ascending: true
+        })
         .limit(1000);
 
     if (result.error) throw result.error;
@@ -83,40 +125,67 @@ async function init() {
 
     renderItems();
 
-// Today's date in Lebanon
-const today = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Asia/Beirut',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit'
-}).format(new Date());
+    // ======================================
+    // FIND OR CREATE TODAY'S SESSION
+    // ======================================
 
-// Find today's open session
-result = await db
-    .from('count_sessions')
-    .select('id,status')
-    .eq('branch_id', branchId)
-    .eq('category_id', categoryId)
-    .eq('created_by', auth.user.id)
-    .eq('count_date', today)
-    .eq('status', 'open')
-    .order('created_at', { ascending: false })
-    .limit(1);
+    await ensureTodaySession();
+
+    await loadCounts();
+}
+
+// ==========================================
+// DAILY COUNTING SESSION
+// ==========================================
+
+async function ensureTodaySession() {
+
+    if (!auth || !branch || !category) {
+        throw new Error(
+            'Inventory branch or category is not ready.'
+        );
+    }
+
+    const today = getLebanonDate();
+
+    // Reuse current session only if it belongs
+    // to the current Lebanon calendar day.
+    if (
+        session &&
+        session.count_date === today &&
+        session.status === 'open'
+    ) {
+        return session;
+    }
+
+    let result = await db
+        .from('count_sessions')
+        .select('id,status,count_date')
+        .eq('branch_id', branch.id)
+        .eq('category_id', category.id)
+        .eq('created_by', auth.user.id)
+        .eq('count_date', today)
+        .eq('status', 'open')
+        .order('created_at', {
+            ascending: false
+        })
+        .limit(1);
 
     if (result.error) throw result.error;
 
     session = result.data?.[0] || null;
 
-    // Create session if none exists
+    // Create a new session for today
     if (!session) {
+
         result = await db
             .from('count_sessions')
-.insert({
-    branch_id: branchId,
-    category_id: categoryId,
-    count_date: today
-})
-            .select('id,status')
+            .insert({
+                branch_id: branch.id,
+                category_id: category.id,
+                count_date: today
+            })
+            .select('id,status,count_date')
             .single();
 
         if (result.error) throw result.error;
@@ -124,20 +193,44 @@ result = await db
         session = result.data;
     }
 
-    el('sessionId').textContent = session.id.slice(0, 8);
+    el('sessionId').textContent =
+        session.id.slice(0, 8);
 
-    await loadCounts();
+    return session;
 }
 
-// Render item search results
-function renderItems() {
-    const query = el('search').value.trim().toLowerCase();
+// ==========================================
+// DISPLAY ITEMS
+// ==========================================
 
-    const filtered = items.filter(item =>
-        item.description.toLowerCase().includes(query) ||
-        item.item_no.toLowerCase().includes(query) ||
-        (item.barcode || '').toLowerCase().includes(query)
-    ).slice(0, 80);
+function renderItems() {
+
+    const query = el('search')
+        .value
+        .trim()
+        .toLowerCase();
+
+    const filtered = items.filter(item => {
+
+        const description = String(
+            item.description || ''
+        ).toLowerCase();
+
+        const itemNo = String(
+            item.item_no || ''
+        ).toLowerCase();
+
+        const barcode = String(
+            item.barcode || ''
+        ).toLowerCase();
+
+        return (
+            description.includes(query) ||
+            itemNo.includes(query) ||
+            barcode.includes(query)
+        );
+
+    }).slice(0, 100);
 
     el('results').innerHTML = filtered.map(item => `
         <button
@@ -145,41 +238,77 @@ function renderItems() {
             type="button"
             data-id="${escapeHtml(item.id)}">
 
-            <strong>${escapeHtml(item.description)}</strong>
-            <small>${escapeHtml(item.item_no)}</small>
+            <strong>
+                ${escapeHtml(item.description || '')}
+            </strong>
+
+            <small>
+                ${escapeHtml(item.item_no || '')}
+            </small>
+
         </button>
-    `).join('') || '<p>No matching items</p>';
+    `).join('') || `
+        <p class="muted">
+            No matching items found.
+        </p>
+    `;
 
     el('results')
-        .querySelectorAll('button')
+        .querySelectorAll('button[data-id]')
         .forEach(button => {
+
             button.addEventListener('click', () => {
                 choose(button.dataset.id);
             });
+
         });
 }
 
-// Select item
+// ==========================================
+// SELECT ITEM
+// ==========================================
+
 function choose(id) {
-    selected = items.find(item => item.id === id);
+
+    selected = items.find(item =>
+        item.id === id
+    );
 
     if (!selected) return;
 
     el('selected').hidden = false;
-    el('itemName').textContent = selected.description;
-    el('itemNo').textContent = selected.item_no;
+
+    el('itemName').textContent =
+        selected.description || '';
+
+    el('itemNo').textContent =
+        selected.item_no || '';
 
     el('qty').value = '';
+
     el('qty').focus();
 }
 
-// Search input
-el('search').addEventListener('input', renderItems);
+// ==========================================
+// SEARCH EVENT
+// ==========================================
 
-// Save inventory count
+el('search').addEventListener(
+    'input',
+    renderItems
+);
+
+// ==========================================
+// SAVE INVENTORY COUNT
+// ==========================================
+
 el('save').addEventListener('click', async () => {
-    if (!selected || !session) {
-        message('Please select an item first.', true);
+
+    if (initializing || !selected || !branch || !category) {
+        message(
+            'Please wait or select an item first.',
+            true
+        );
         return;
     }
 
@@ -191,18 +320,29 @@ el('save').addEventListener('click', async () => {
         !Number.isFinite(quantity) ||
         quantity < 0
     ) {
-        message('Enter a valid quantity. Zero is allowed.', true);
+        message(
+            'Enter a valid quantity. Zero is allowed.',
+            true
+        );
         return;
     }
 
     el('save').disabled = true;
 
     try {
-        const { error } = await db.rpc('record_count', {
-            p_session: session.id,
-            p_item: selected.id,
-            p_qty: quantity
-        });
+
+        // Check the session again before saving.
+        // This also handles a page left open overnight.
+        await ensureTodaySession();
+
+        const { error } = await db.rpc(
+            'record_count',
+            {
+                p_session: session.id,
+                p_item: selected.id,
+                p_qty: quantity
+            }
+        );
 
         if (error) throw error;
 
@@ -211,86 +351,134 @@ el('save').addEventListener('click', async () => {
 
         await loadCounts();
 
-        message('Count saved successfully.');
+        message(
+            'Count saved successfully.'
+        );
 
     } catch (error) {
-        console.error('Save count error:', error);
-        message(error.message, true);
+
+        console.error(
+            'Save count error:',
+            error
+        );
+
+        message(
+            error.message || String(error),
+            true
+        );
 
     } finally {
+
         el('save').disabled = false;
+
     }
 });
 
+// ==========================================
+// LOAD LATEST COUNT PER ITEM
+// ==========================================
 
 async function loadCounts() {
+
     if (!session) return;
 
     const { data, error } = await db
         .from('count_entries')
-        .select('id,item_id,qty,created_at,items(item_no,description)')
+        .select(
+            'id,item_id,qty,created_at,items(item_no,description)'
+        )
         .eq('session_id', session.id)
-        .order('created_at', { ascending: false })
-        .order('id', { ascending: false });
+        .order('created_at', {
+            ascending: false
+        })
+        .order('id', {
+            ascending: false
+        })
+        .limit(1000);
 
     if (error) throw error;
 
-    // Keep the latest reading for each item
+    // Only display the latest reading
+    // for each item in this session.
     const latestCounts = new Map();
 
     for (const entry of (data || [])) {
+
         if (!latestCounts.has(entry.item_id)) {
-            latestCounts.set(entry.item_id, entry);
+            latestCounts.set(
+                entry.item_id,
+                entry
+            );
         }
+
     }
 
-    const counts = Array.from(latestCounts.values());
+    const counts = Array.from(
+        latestCounts.values()
+    );
 
     el('countList').innerHTML = counts.map(entry => `
         <tr>
-            <td>${escapeHtml(entry.items?.item_no ?? '')}</td>
-            <td>${escapeHtml(entry.items?.description ?? '')}</td>
-            <td>${escapeHtml(entry.qty)}</td>
-        </tr>
-    `).join('') ||
-    '<tr><td colspan="3">No items counted yet</td></tr>';
+            <td>
+                ${escapeHtml(
+                    entry.items?.item_no ?? ''
+                )}
+            </td>
 
-    el('total').textContent = counts.length;
+            <td>
+                ${escapeHtml(
+                    entry.items?.description ?? ''
+                )}
+            </td>
+
+            <td>
+                ${escapeHtml(entry.qty)}
+            </td>
+        </tr>
+    `).join('') || `
+        <tr>
+            <td colspan="3">
+                No items counted yet.
+            </td>
+        </tr>
+    `;
+
+    el('total').textContent =
+        counts.length;
 }
 
+// ==========================================
+// BARCODE SCANNER
+// ==========================================
 
-    // Display one row per item
-    el('countList').innerHTML = counts.map(entry => `
-        <tr>
-            <td>${escapeHtml(entry.items?.item_no)}</td>
-            <td>${escapeHtml(entry.items?.description)}</td>
-            <td>${escapeHtml(entry.qty)}</td>
-        </tr>
-    `).join('') ||
-        '<tr><td colspan="3">No items counted yet</td></tr>';
-
-    // Number of unique items
-    el('total').textContent = counts.length;
-
-
-// Barcode scanner
 el('scan').addEventListener('click', async () => {
+
     const Html5Qrcode = window.Html5Qrcode;
 
     if (!Html5Qrcode) {
-        message('Scanner unavailable. Use search instead.', true);
+
+        message(
+            'Scanner unavailable. Use search instead.',
+            true
+        );
+
         return;
     }
 
     if (scanner) return;
 
     try {
+
         el('scanner').hidden = false;
 
-        scanner = new Html5Qrcode('scanner');
+        scanner = new Html5Qrcode(
+            'scanner'
+        );
 
         await scanner.start(
-            { facingMode: 'environment' },
+            {
+                facingMode: 'environment'
+            },
             {
                 fps: 10,
                 qrbox: {
@@ -299,35 +487,59 @@ el('scan').addEventListener('click', async () => {
                 }
             },
             async code => {
+
                 await stopScanner();
 
+                const scannedCode =
+                    String(code).trim();
+
                 const item = items.find(item =>
-                    item.barcode === code ||
-                    item.item_no === code
+                    String(item.barcode || '').trim() === scannedCode ||
+                    String(item.item_no || '').trim() === scannedCode
                 );
 
                 if (item) {
+
                     choose(item.id);
+
                 } else {
+
                     message(
                         'Barcode not found in this category.',
                         true
                     );
+
                 }
             },
             () => {}
         );
 
     } catch (error) {
-        message('Camera unavailable: ' + error.message, true);
+
+        console.error(
+            'Scanner error:',
+            error
+        );
+
+        message(
+            'Camera unavailable: ' + error.message,
+            true
+        );
+
         await stopScanner();
     }
 });
 
-// Stop scanner
+// ==========================================
+// STOP BARCODE SCANNER
+// ==========================================
+
 async function stopScanner() {
+
     if (scanner) {
+
         try {
+
             if (scanner.isScanning) {
                 await scanner.stop();
             }
@@ -335,7 +547,12 @@ async function stopScanner() {
             await scanner.clear();
 
         } catch (error) {
-            console.warn('Scanner stop error:', error);
+
+            console.warn(
+                'Scanner stop error:',
+                error
+            );
+
         }
 
         scanner = null;
@@ -344,4 +561,7 @@ async function stopScanner() {
     el('scanner').hidden = true;
 }
 
-el('stopScan').addEventListener('click', stopScanner);
+el('stopScan').addEventListener(
+    'click',
+    stopScanner
+);
