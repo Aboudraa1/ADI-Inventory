@@ -83,16 +83,25 @@ async function init() {
 
     renderItems();
 
-    // Find existing open session
-    result = await db
-        .from('count_sessions')
-        .select('id,status')
-        .eq('branch_id', branchId)
-        .eq('category_id', categoryId)
-        .eq('created_by', auth.user.id)
-        .eq('status', 'open')
-        .order('created_at', { ascending: false })
-        .limit(1);
+// Today's date in Lebanon
+const today = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Beirut',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+}).format(new Date());
+
+// Find today's open session
+result = await db
+    .from('count_sessions')
+    .select('id,status')
+    .eq('branch_id', branchId)
+    .eq('category_id', categoryId)
+    .eq('created_by', auth.user.id)
+    .eq('count_date', today)
+    .eq('status', 'open')
+    .order('created_at', { ascending: false })
+    .limit(1);
 
     if (result.error) throw result.error;
 
@@ -102,10 +111,11 @@ async function init() {
     if (!session) {
         result = await db
             .from('count_sessions')
-            .insert({
-                branch_id: branchId,
-                category_id: categoryId
-            })
+.insert({
+    branch_id: branchId,
+    category_id: categoryId,
+    count_date: today
+})
             .select('id,status')
             .single();
 
