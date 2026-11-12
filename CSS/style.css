@@ -269,3 +269,58 @@ footer {
     padding: 30px;
     color: #678184;
 }
+
+/* Arrange Items */
+
+.sortable-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 18px;
+    max-height: 600px;
+    overflow-y: auto;
+}
+
+.sortable-item {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    background: #ffffff;
+    border: 1px solid #d9e5e6;
+    border-radius: 10px;
+    padding: 14px;
+    cursor: grab;
+    user-select: none;
+}
+
+.sortable-item:hover {
+    border-color: #078b8b;
+    background: #f4fbfb;
+}
+
+.sortable-item.dragging {
+    opacity: 0.45;
+    background: #e7f4f4;
+}
+
+.drag-handle {
+    font-size: 22px;
+    color: #789295;
+    cursor: grab;
+}
+
+.sortable-item-info {
+    flex: 1;
+}
+
+.sortable-item-info strong {
+    display: block;
+    color: #15343b;
+}
+
+.sortable-item-info small {
+    display: block;
+    color: #607b7e;
+    margin-top: 4px;
+}
+
