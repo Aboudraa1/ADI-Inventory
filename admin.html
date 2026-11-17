@@ -1,474 +1,393 @@
-
 <!doctype html>
+
 <html lang="en">
-
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-
+  <head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1" name="viewport" />
     <title>ADI Inventory | Admin</title>
-
     <!-- Main CSS -->
-    <link rel="stylesheet" href="./CSS/style.css">
-</head>
-
-<body>
-
+    <link href="./CSS/style.css" rel="stylesheet" />
+    <link href="./CSS/dashboard.css" rel="stylesheet" />
+    <link href="./CSS/items.css" rel="stylesheet" />
+  </head>
+  <body>
+    <aside class="dash-sidebar" id="dashSidebar">
+      <div class="dash-brand">
+        <span class="dash-brand-icon">ADI</span>
+        <div>
+          <strong>ADI Inventory</strong><small>Management System</small>
+        </div>
+      </div>
+      <nav aria-label="Admin sections" class="dash-nav">
+        <button class="active" data-go="overview" type="button">
+          Dashboard</button
+        ><button data-go="results" type="button">Count Results</button
+        ><button data-go="items" type="button">Items</button
+        ><button data-go="categories" type="button">Categories</button
+        ><button data-go="ordering" type="button">Item Ordering</button
+        ><button data-go="rules" type="button">Min / Max</button
+        ><button data-go="sessions" type="button">Sessions</button
+        ><button data-go="reorders" type="button">Reorders</button>
+      </nav>
+      <div class="dash-side-footer">
+        <a href="./home.html">Staff Counting Page</a
+        ><button id="logout" type="button">Log out</button>
+      </div>
+    </aside>
+    <div class="dash-backdrop" hidden="" id="dashBackdrop"></div>
     <!-- Header -->
-    <header>
-        <h1>ADI Inventory · Admin</h1>
-
-        <nav class="actions">
-            <a href="./home.html">Categories</a>
-
-            <button
-                class="secondary"
-                id="logout"
-                type="button">
-                Log out
-            </button>
-        </nav>
-    </header>
-
-    <main>
-
-        <!-- General Messages -->
-        <p
-            id="message"
-            class="message"
-            role="status">
+    <main class="dashboard-main">
+      <div class="dash-topbar">
+        <button
+          aria-expanded="false"
+          aria-label="Open navigation"
+          id="dashMenuToggle"
+          type="button"
+        >
+          ☰
+        </button>
+        <div>
+          <strong id="dashPageTitle">Dashboard</strong
+          ><small>ADI Inventory · Admin</small>
+        </div>
+        <a href="./home.html">Categories / Staff</a>
+      </div>
+      <!-- General Messages -->
+      <p class="message" id="message" role="status"></p>
+      <section class="dashboard-panel dashboard-overview" data-panel="overview">
+        <div class="dash-intro">
+          <h2>Dashboard Overview</h2>
+          <p>Inventory management across all branches</p>
+        </div>
+        <div class="dash-stats">
+          <article class="dash-stat">
+            <span>Total Items</span><strong id="statItems">—</strong>
+          </article>
+          <article class="dash-stat">
+            <span>Categories</span><strong id="statCategories">—</strong>
+          </article>
+          <article class="dash-stat">
+            <span>Branches</span><strong id="statBranches">—</strong>
+          </article>
+          <article class="dash-stat">
+            <span>Open Sessions</span><strong id="statSessions">—</strong>
+          </article>
+        </div>
+        <div class="dash-shortcuts">
+          <h3>Quick Actions</h3>
+          <button data-go="results" type="button">View Count Results</button
+          ><button data-go="ordering" type="button">Arrange Items</button
+          ><button data-go="items" type="button">Manage Items</button
+          ><button data-go="reorders" type="button">Review Reorders</button>
+        </div>
+      </section>
+      <!-- Categories and Items -->
+      <!-- Min / Max Stock Rules -->
+      <section class="card dashboard-panel" data-panel="rules">
+        <h2>Min / Max Stock Rules</h2>
+        <p class="muted">
+          Set minimum and maximum stock quantities for each item in each branch.
         </p>
+        <form id="ruleForm">
+          <!-- Branch Selection -->
+          <label for="ruleBranch"> Select Branch </label>
+          <select id="ruleBranch" required="">
+            <option value="">Select Branch</option>
+          </select>
+          <!-- Item Selection -->
+          <label for="ruleCategory">Select Category</label>
+          <select id="ruleCategory">
+            <option value="">All Categories</option>
+          </select>
+          <label for="itemSelect"> Select Item </label>
+          <select id="itemSelect" required=""></select>
+          <div class="two">
+            <div>
+              <label for="minQty"> Minimum Quantity </label>
+              <input
+                id="minQty"
+                min="0"
+                required=""
+                step="0.001"
+                type="number"
+                value="0"
+              />
+            </div>
+            <div>
+              <label for="maxQty"> Maximum Quantity </label>
+              <input
+                id="maxQty"
+                min="0"
+                required=""
+                step="0.001"
+                type="number"
+                value="0"
+              />
+            </div>
+          </div>
+          <label>
+            <input id="ruleEnabled" style="width: auto" type="checkbox" />
 
-        <!-- Categories and Items -->
+            Enable Automatic Suggestion
+          </label>
+          <p>
+            <button type="submit">Save Rule</button>
+          </p>
+        </form>
+        <h3>Saved Stock Rules</h3>
+        <div class="tablewrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Item No.</th>
+                <th>Description</th>
+                <th>Rule</th>
+                <th>Min</th>
+                <th>Max</th>
+              </tr>
+            </thead>
+            <tbody id="rules"></tbody>
+          </table>
+        </div>
+      </section>
+      <!-- Arrange Items -->
+      <section
+        class="card dashboard-panel"
+        data-panel="ordering"
+        id="arrangeItemsSection"
+      >
+        <h2>Arrange Items</h2>
+        <p class="muted">
+          Select a category and drag items to arrange their display order for
+          inventory staff.
+        </p>
         <div class="two">
-
-            <!-- Categories -->
-            <section class="card">
-
-                <h2>Categories</h2>
-
-                <div id="categoryList"></div>
-
-                <form id="categoryForm">
-
-                    <label for="categoryName">
-                        New Category
-                    </label>
-
-                    <input
-                        id="categoryName"
-                        type="text"
-                        placeholder="Nuts"
-                        required>
-
-                    <p>
-                        <button type="submit">
-                            Add Category
-                        </button>
-                    </p>
-
-                </form>
-            </section>
-
-            <!-- Add / Update Items -->
-            <section class="card">
-
-                <h2>Add / Update Item</h2>
-
-                <form id="itemForm">
-
-                    <label for="itemNo">
-                        Item Number
-                    </label>
-
-                    <input
-                        id="itemNo"
-                        type="text"
-                        required>
-
-                    <label for="description">
-                        Description
-                    </label>
-
-                    <input
-                        id="description"
-                        type="text"
-                        required>
-
-                    <label for="barcode">
-                        Barcode
-                    </label>
-
-                    <input
-                        id="barcode"
-                        type="text">
-
-                    <label for="categorySelect">
-                        Category
-                    </label>
-
-                    <select
-                        id="categorySelect"
-                        required>
-                    </select>
-
-                    <p>
-                        <button type="submit">
-                            Save Item
-                        </button>
-                    </p>
-
-                </form>
-            </section>
-
-        </div>
-
-        <!-- Min / Max Stock Rules -->
-        <section class="card">
-
-            <h2>Min / Max Stock Rules</h2>
-
-            <p class="muted">
-                Set minimum and maximum stock quantities
-                for each item in each branch.
-            </p>
-
-            <form id="ruleForm">
-
-                <!-- Branch Selection -->
-                <label for="ruleBranch">
-                    Select Branch
-                </label>
-
-                <select
-                    id="ruleBranch"
-                    required>
-                    <option value="">
-                        Select Branch
-                    </option>
-                </select>
-
-                <!-- Item Selection -->
-                <label for="itemSelect">
-                    Select Item
-                </label>
-
-                <select
-                    id="itemSelect"
-                    required>
-                </select>
-
-                <div class="two">
-
-                    <div>
-                        <label for="minQty">
-                            Minimum Quantity
-                        </label>
-
-                        <input
-                            id="minQty"
-                            type="number"
-                            min="0"
-                            step="0.001"
-                            value="0"
-                            required>
-                    </div>
-
-                    <div>
-                        <label for="maxQty">
-                            Maximum Quantity
-                        </label>
-
-                        <input
-                            id="maxQty"
-                            type="number"
-                            min="0"
-                            step="0.001"
-                            value="0"
-                            required>
-                    </div>
-
-                </div>
-
-                <label>
-                    <input
-                        id="ruleEnabled"
-                        type="checkbox"
-                        style="width:auto">
-
-                    Enable Automatic Suggestion
-                </label>
-
-                <p>
-                    <button type="submit">
-                        Save Rule
-                    </button>
-                </p>
-
-            </form>
-
-            <h3>Saved Stock Rules</h3>
-
-            <div class="tablewrap">
-                <table>
-
-                    <thead>
-                        <tr>
-                            <th>Item No.</th>
-                            <th>Description</th>
-                            <th>Rule</th>
-                            <th>Min</th>
-                            <th>Max</th>
-                        </tr>
-                    </thead>
-
-                    <tbody id="rules"></tbody>
-
-                </table>
-            </div>
-
-        </section>
-
-<!-- Arrange Items -->
-<section class="card" id="arrangeItemsSection">
-
-    <h2>Arrange Items</h2>
-
-    <p class="muted">
-        Select a category and drag items to arrange
-        their display order for inventory staff.
-    </p>
-
-    <div class="two">
-
-        <div>
-            <label for="sortCategory">
-                Select Category
-            </label>
-
+          <div>
+            <label for="sortCategory"> Select Category </label>
             <select id="sortCategory">
-                <option value="">
-                    Select Category
-                </option>
+              <option value="">Select Category</option>
             </select>
-        </div>
-
-        <div>
-            <label for="sortSearch">
-                Search Item
-            </label>
-
+          </div>
+          <div>
+            <label for="sortSearch"> Search Item </label>
             <input
-                id="sortSearch"
-                type="search"
-                placeholder="Search by item number or description">
+              id="sortSearch"
+              placeholder="Search by item number or description"
+              type="search"
+            />
+          </div>
         </div>
-
-    </div>
-
-    <p id="sortMessage" class="message" role="status"></p>
-
-    <div id="sortableItems" class="sortable-list"></div>
-
-    <div class="actions" style="margin-top:20px">
-
-        <button
-            id="saveItemOrder"
-            type="button">
-            Save Order
-        </button>
-
-        <button
-            id="resetItemOrder"
-            class="secondary"
-            type="button">
+        <p class="message" id="sortMessage" role="status"></p>
+        <div class="sortable-list" id="sortableItems"></div>
+        <div class="actions" style="margin-top: 20px">
+          <button id="saveItemOrder" type="button">Save Order</button>
+          <button class="secondary" id="resetItemOrder" type="button">
             Reset Changes
-        </button>
-
-    </div>
-
-</section>
-
-        <!-- Inventory Count Results -->
-        <section class="card">
-
-            <div class="actions">
-
-                <h2>Inventory Count Results</h2>
-
-                <button
-                    id="refreshCounts"
-                    class="secondary"
-                    type="button">
-                    Refresh Results
-                </button>
-
-            </div>
-
-            <p class="muted">
-                View the latest counted quantity
-                for each item in each branch.
-                Previous readings remain saved in Supabase.
+          </button>
+        </div>
+      </section>
+      <!-- Inventory Count Results -->
+      <section class="card dashboard-panel" data-panel="results">
+        <div class="actions">
+          <h2>Inventory Count Results</h2>
+          <button class="secondary" id="refreshCounts" type="button">
+            Refresh Results
+          </button>
+          <button class="secondary" id="exportCountExcel" type="button">
+            Export Excel
+          </button>
+        </div>
+        <p class="muted">
+          View the latest counted quantity for each item in each branch.
+          Previous readings remain saved in Supabase.
+        </p>
+        <div class="two">
+          <!-- Branch Filter -->
+          <div>
+            <label for="resultsBranch"> Select Branch </label>
+            <select id="resultsBranch">
+              <option value="">All Branches</option>
+            </select>
+          </div>
+          <!-- Category Filter -->
+          <div>
+            <label for="resultsCategory"> Select Category </label>
+            <select id="resultsCategory">
+              <option value="">All Categories</option>
+            </select>
+          </div>
+        </div>
+        <div style="margin-top: 16px; max-width: 360px">
+          <label for="resultsDate">Select Date</label>
+          <input
+            id="resultsDate"
+            type="date"
+            aria-label="Filter counts by date"
+          />
+          <button
+            id="clearResultsDate"
+            class="secondary"
+            type="button"
+            style="margin-top: 8px"
+          >
+            All Dates
+          </button>
+        </div>
+        <p class="message" id="countResultsMessage" role="status"></p>
+        <div class="tablewrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Branch</th>
+                <th>Item No.</th>
+                <th>Description</th>
+                <th>Counted Qty</th>
+                <th>Count Date</th>
+              </tr>
+            </thead>
+            <tbody id="countResults">
+              <tr>
+                <td colspan="5">Loading inventory results...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+      <!-- Counting Sessions -->
+      <section class="card dashboard-panel" data-panel="sessions">
+        <h2>Counting Sessions</h2>
+        <p class="muted">
+          Admin closes a session to generate reorder suggestions.
+        </p>
+        <div class="tablewrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Branch / Category</th>
+                <th>Created</th>
+                <th>Status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="sessions"></tbody>
+          </table>
+        </div>
+      </section>
+      <!-- Reorder Draft -->
+      <section class="card dashboard-panel" data-panel="reorders">
+        <div class="actions">
+          <h2>Reorder Draft</h2>
+          <button class="secondary" id="exportOrders" type="button">
+            Export Approved CSV
+          </button>
+        </div>
+        <p class="muted">
+          Admin can review suggested quantities, change order quantities, and
+          approve or cancel draft orders. No purchase orders are sent
+          automatically.
+        </p>
+        <div class="tablewrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Item No.</th>
+                <th>Description</th>
+                <th>Counted</th>
+                <th>Suggested</th>
+                <th>Order Qty</th>
+                <th>Status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="orders"></tbody>
+          </table>
+        </div>
+      </section>
+      <section class="card dashboard-panel" data-panel="categories">
+        <h2>Categories</h2>
+        <div id="categoryList"></div>
+        <form id="categoryForm">
+          <label for="categoryName"> New Category </label>
+          <input id="categoryName" placeholder="Nuts" required="" type="text" />
+          <p>
+            <button type="submit">Add Category</button>
+          </p>
+        </form>
+      </section>
+      <section class="card dashboard-panel" data-panel="items">
+        <h2>Items Management</h2>
+        <div class="items-toolbar">
+          <input
+            aria-label="Search items"
+            id="itemsSearch"
+            placeholder="Search item number, description or barcode"
+            type="search"
+          /><select aria-label="Filter category" id="itemsCategoryFilter">
+            <option value="">All Categories</option></select
+          ><select aria-label="Filter status" id="itemsStatusFilter">
+            <option value="all">All Items</option>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option></select
+          ><button id="itemsAddNew" type="button">+ Add Item</button>
+        </div>
+        <div class="items-summary" id="itemsSummary" role="status"></div>
+        <div class="tablewrap">
+          <table class="items-table">
+            <thead>
+              <tr>
+                <th>Item No.</th>
+                <th>Description</th>
+                <th>Category</th>
+                <th>Barcode</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="itemsTableBody"></tbody>
+          </table>
+        </div>
+        <div class="items-pagination">
+          <button class="secondary" id="itemsPrev" type="button">
+            Previous</button
+          ><span id="itemsPageLabel"></span
+          ><button class="secondary" id="itemsNext" type="button">Next</button>
+        </div>
+        <div class="items-form-card" id="itemsFormCard">
+          <h3 id="itemsFormTitle">Add / Update Item</h3>
+          <form id="itemForm">
+            <label for="itemNo"> Item Number </label>
+            <input id="itemNo" required="" type="text" />
+            <label for="description"> Description </label>
+            <input id="description" required="" type="text" />
+            <label for="barcode"> Barcode </label>
+            <input id="barcode" type="text" />
+            <label for="categorySelect"> Category </label>
+            <select id="categorySelect" required=""></select>
+            <p>
+              <button type="submit">Save Item</button>
             </p>
-
-            <div class="two">
-
-                <!-- Branch Filter -->
-                <div>
-
-                    <label for="resultsBranch">
-                        Select Branch
-                    </label>
-
-                    <select id="resultsBranch">
-                        <option value="">
-                            All Branches
-                        </option>
-                    </select>
-
-                </div>
-
-                <!-- Category Filter -->
-                <div>
-
-                    <label for="resultsCategory">
-                        Select Category
-                    </label>
-
-                    <select id="resultsCategory">
-                        <option value="">
-                            All Categories
-                        </option>
-                    </select>
-
-                </div>
-
-            </div>
-
-            <p
-                id="countResultsMessage"
-                class="message"
-                role="status">
+            <p>
+              <button class="secondary" id="itemsCancelEdit" type="button">
+                Clear Form
+              </button>
             </p>
-
-            <div class="tablewrap">
-
-                <table>
-
-                    <thead>
-                        <tr>
-                            <th>Branch</th>
-                            <th>Item No.</th>
-                            <th>Description</th>
-                            <th>Counted Qty</th>
-                            <th>Count Date</th>
-                        </tr>
-                    </thead>
-
-                    <tbody id="countResults">
-                        <tr>
-                            <td colspan="5">
-                                Loading inventory results...
-                            </td>
-                        </tr>
-                    </tbody>
-
-                </table>
-
-            </div>
-
-        </section>
-
-        <!-- Counting Sessions -->
-        <section class="card">
-
-            <h2>Counting Sessions</h2>
-
-            <p class="muted">
-                Admin closes a session to generate
-                reorder suggestions.
-            </p>
-
-            <div class="tablewrap">
-
-                <table>
-
-                    <thead>
-                        <tr>
-                            <th>Branch / Category</th>
-                            <th>Created</th>
-                            <th>Status</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-
-                    <tbody id="sessions"></tbody>
-
-                </table>
-
-            </div>
-
-        </section>
-
-        <!-- Reorder Draft -->
-        <section class="card">
-
-            <div class="actions">
-
-                <h2>Reorder Draft</h2>
-
-                <button
-                    id="exportOrders"
-                    class="secondary"
-                    type="button">
-                    Export Approved CSV
-                </button>
-
-            </div>
-
-            <p class="muted">
-                Admin can review suggested quantities,
-                change order quantities, and approve
-                or cancel draft orders.
-
-                No purchase orders are sent automatically.
-            </p>
-
-            <div class="tablewrap">
-
-                <table>
-
-                    <thead>
-                        <tr>
-                            <th>Item No.</th>
-                            <th>Description</th>
-                            <th>Counted</th>
-                            <th>Suggested</th>
-                            <th>Order Qty</th>
-                            <th>Status</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-
-                    <tbody id="orders"></tbody>
-
-                </table>
-
-            </div>
-
-        </section>
-
+          </form>
+        </div>
+      </section>
     </main>
 
-    <footer>
-        ADI Inventory Management System
-    </footer>
-
     <!-- Admin JavaScript -->
-    <script
-        type="module"
-        src="./JS/admin.js">
+    <script type="module">
+      import("./JS/admin.js").catch((error) => {
+        console.error("ADI Admin failed to load:", error);
+        const target = document.getElementById("message");
+        if (target) {
+          target.style.display = "block";
+          target.style.color = "#a42323";
+          target.textContent =
+            "Admin JavaScript failed to load: " + error.message;
+        }
+      });
     </script>
-
-</body>
+  </body>
 </html>

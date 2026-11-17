@@ -1,0 +1,89 @@
+/* ADI Inventory - item management styling */
+.items-toolbar {
+  display: grid;
+  grid-template-columns: minmax(180px, 2fr) minmax(150px, 1fr) minmax(
+      135px,
+      1fr
+    ) auto;
+  gap: 12px;
+  align-items: center;
+  margin: 22px 0 14px;
+}
+.items-toolbar input,
+.items-toolbar select {
+  margin: 0;
+}
+.items-summary {
+  color: #617783;
+  font-size: 13px;
+  margin: 10px 0 14px;
+}
+.items-table td:nth-child(2) {
+  min-width: 210px;
+}
+.items-table td:last-child {
+  white-space: nowrap;
+}
+.items-table td button {
+  padding: 7px 11px !important;
+  font-size: 12px;
+  margin: 2px;
+}
+.items-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 15px;
+  margin: 20px 0;
+}
+#itemsPageLabel {
+  color: #617783;
+  font-size: 13px;
+  font-weight: 600;
+}
+.items-form-card {
+  background: #f7fafb;
+  border: 1px solid #dce7ea;
+  border-radius: 12px;
+  padding: 22px;
+  margin-top: 22px;
+}
+.items-form-card h3 {
+  margin: 0 0 18px;
+}
+.items-form-card form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 18px;
+  align-items: end;
+}
+.items-form-card form > label {
+  margin: 0;
+  align-self: end;
+}
+.items-form-card form > input,
+.items-form-card form > select {
+  margin: 0 0 10px;
+}
+.items-form-card form > p {
+  margin: 8px 0;
+}
+#itemForm button {
+  min-width: 115px;
+}
+@media (max-width: 1050px) {
+  .items-toolbar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 650px) {
+  .items-toolbar {
+    grid-template-columns: 1fr;
+  }
+  .items-form-card form {
+    grid-template-columns: 1fr;
+  }
+  .items-form-card {
+    padding: 16px;
+  }
+}
