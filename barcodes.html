@@ -1,0 +1,444 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>ADI Inventory | Barcode Printing</title>
+
+  <link rel="stylesheet" href="./CSS/barcodes.css">
+
+  <!-- Barcode Library -->
+  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+
+  <!-- Excel Library -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <!-- Application Logic -->
+  <script type="module" src="./JS/admin/barcodes.js"></script>
+
+  <style>
+    .queue-panel {
+      max-width: 1200px;
+      margin: 20px auto;
+    }
+
+    .queue-table-wrapper {
+      overflow-x: auto;
+    }
+
+    .queue-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+    }
+
+    .queue-table th,
+    .queue-table td {
+      padding: 12px;
+      border-bottom: 1px solid #ddd;
+      text-align: left;
+    }
+
+    .queue-table th {
+      background: #eef7f7;
+    }
+
+    .queue-table input {
+      width: 75px;
+      padding: 7px;
+    }
+
+    .queue-actions {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 15px;
+      margin-top: 20px;
+      flex-wrap: wrap;
+    }
+
+    .queue-buttons {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .queue-buttons button,
+    #addToQueueBtn {
+      padding: 12px 20px;
+      cursor: pointer;
+    }
+
+    .remove-btn {
+      background: #c0392b;
+      color: white;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    #printAllBtn {
+      background: #087f8c;
+      color: white;
+      border: none;
+      border-radius: 6px;
+    }
+
+    #clearQueueBtn {
+      background: #e5e7eb;
+      color: #222;
+      border: none;
+      border-radius: 6px;
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    /* Excel Import */
+
+    .excel-import-panel {
+      border-top: 4px solid #087f8c;
+    }
+
+    .excel-import-panel input[type="file"] {
+      width: 100%;
+      max-width: 500px;
+      padding: 12px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      background: #fff;
+    }
+
+    .excel-format {
+      margin: 15px 0;
+      padding: 12px;
+      background: #eef7f7;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+
+    .excel-format table {
+      width: 100%;
+      max-width: 420px;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+
+    .excel-format th,
+    .excel-format td {
+      border: 1px solid #d0dddd;
+      padding: 8px 12px;
+      text-align: left;
+    }
+
+    #importExcelBtn {
+      background: #087f8c;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      padding: 12px 22px;
+      cursor: pointer;
+    }
+
+    #importStatus {
+      margin-top: 15px;
+      white-space: pre-line;
+      font-weight: 600;
+    }
+
+    #importErrors {
+      margin-top: 10px;
+      white-space: pre-line;
+      color: #b42318;
+      font-size: 13px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- Header -->
+
+  <header class="topbar">
+    <div>
+      <h1>ADI Inventory</h1>
+      <p>Barcode & Label Printing</p>
+    </div>
+
+    <a href="./admin.html">
+      Back to Dashboard
+    </a>
+  </header>
+
+  <!-- Search and Preview -->
+
+  <main class="layout">
+
+    <section class="panel">
+      <h2>Find Item</h2>
+
+      <p class="hint">
+        Enter or scan an Item Number to generate a label.
+      </p>
+
+      <form id="searchForm">
+        <label for="itemNumber">
+          Item Number
+        </label>
+
+        <div class="search-row">
+          <input
+            id="itemNumber"
+            type="text"
+            placeholder="Enter Item Number"
+            autocomplete="off"
+            required
+          >
+
+          <button type="submit" id="searchBtn">
+            Search
+          </button>
+        </div>
+      </form>
+
+      <div class="field">
+        <label for="description">
+          Item Description
+        </label>
+
+        <textarea
+          id="description"
+          rows="2"
+          readonly
+        ></textarea>
+      </div>
+
+      <div class="field">
+        <label for="labelQuantity">
+          Number of Labels
+        </label>
+
+        <input
+          id="labelQuantity"
+          type="number"
+          min="1"
+          max="100"
+          value="1"
+        >
+      </div>
+
+      <div class="field">
+        <label>Printer</label>
+
+        <div class="printer-info">
+          Godex G500 · USB · 65 × 40 mm
+        </div>
+      </div>
+
+      <div
+        id="status"
+        role="status"
+        aria-live="polite"
+      ></div>
+
+      <button
+        id="addToQueueBtn"
+        class="print-button"
+        disabled
+      >
+        + Add to Print Queue
+      </button>
+
+      <button
+        id="printBtn"
+        class="print-button"
+        disabled
+      >
+        Print Selected Item
+      </button>
+    </section>
+
+    <!-- Label Preview -->
+
+    <section class="panel preview-panel">
+      <h2>Label Preview</h2>
+
+      <p class="hint">
+        Actual label size: 65 × 40 mm
+      </p>
+
+      <div class="preview-area">
+        <div id="printArea">
+          <div class="label-card">
+
+            <div class="label-brand">
+              ADI
+            </div>
+
+            <div
+              class="label-description"
+              id="previewDescription"
+            >
+              Item Description
+            </div>
+
+            <svg id="barcode"></svg>
+
+            <div
+              class="label-item-no"
+              id="previewItemNo"
+            >
+              00000000
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <p class="hint">
+        The barcode is generated using CODE128.
+      </p>
+    </section>
+
+  </main>
+
+  <!-- Excel Import -->
+
+  <section class="panel queue-panel excel-import-panel">
+
+    <h2>Import Labels from Excel</h2>
+
+    <p class="hint">
+      Upload an Excel file to add multiple items
+      to the print queue automatically.
+    </p>
+
+    <div class="excel-format">
+      <strong>Required Excel Format</strong>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Item Number</th>
+            <th>Quantity</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          <tr>
+            <td>10003104</td>
+            <td>2</td>
+          </tr>
+
+          <tr>
+            <td>10008713</td>
+            <td>3</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p class="hint">
+        The first worksheet must contain these
+        two column headers.
+      </p>
+    </div>
+
+    <div class="field">
+      <label for="excelFile">
+        Select Excel File
+      </label>
+
+      <input
+        type="file"
+        id="excelFile"
+        accept=".xlsx,.xls"
+      >
+    </div>
+
+    <div class="queue-buttons">
+      <button
+        id="importExcelBtn"
+        type="button"
+      >
+        Import to Print Queue
+      </button>
+    </div>
+
+    <div
+      id="importStatus"
+      role="status"
+      aria-live="polite"
+    ></div>
+
+    <div id="importErrors"></div>
+
+  </section>
+
+  <!-- Print Queue -->
+
+  <section class="panel queue-panel">
+
+    <h2>Print Queue</h2>
+
+    <p class="hint">
+      Add multiple items and print all labels
+      in one batch.
+    </p>
+
+    <div class="queue-table-wrapper">
+      <table class="queue-table">
+
+        <thead>
+          <tr>
+            <th>Item Number</th>
+            <th>Description</th>
+            <th>Labels</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+
+        <tbody id="queueBody">
+          <tr>
+            <td colspan="4">
+              No items in print queue.
+            </td>
+          </tr>
+        </tbody>
+
+      </table>
+    </div>
+
+    <div class="queue-actions">
+
+      <div>
+        <strong>Items:</strong>
+        <span id="totalItems">0</span>
+
+        &nbsp; | &nbsp;
+
+        <strong>Total Labels:</strong>
+        <span id="totalLabels">0</span>
+      </div>
+
+      <div class="queue-buttons">
+
+        <button id="clearQueueBtn" disabled>
+          Clear Queue
+        </button>
+
+        <button id="printAllBtn" disabled>
+          Print All Labels
+        </button>
+
+      </div>
+    </div>
+
+  </section>
+
+</body>
+</html>
