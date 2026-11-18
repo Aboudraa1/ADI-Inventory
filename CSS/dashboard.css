@@ -464,3 +464,23 @@ tbody tr:hover {
     font-size: 23px;
   }
 }
+
+/* Barcode Printing - Sidebar */
+
+.dash-nav .barcode-nav-link {
+  display: block;
+  width: 100%;
+  padding: 13px 14px;
+  margin-top: 4px;
+  border-radius: 9px;
+  color: #405b69;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  box-sizing: border-box;
+}
+
+.dash-nav .barcode-nav-link:hover {
+  background: #e8f5f5;
+  color: #008c91;
+}
